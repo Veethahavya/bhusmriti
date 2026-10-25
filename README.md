@@ -100,7 +100,7 @@ A cron alternative to the server:
 
 ![Satellite Earth with flux clouds](docs/aeros-earth.png)
 
-The cloud shell is built entirely in the existing WebGL2 engine: a 2° texture packs cloud cover, precipitation, CAPE, temperature, RH, precipitable water and wind into two RGBA maps; a 64³ tiling 3D noise texture is raymarched through a thin spherical shell in 8 steps (5 on mobile). The satellite base is loaded lazily at 8K, with a 2K fallback for smaller GPUs. No new framework or runtime dependency was added.
+The cloud shell is built entirely in the existing WebGL2 engine: two 2° RGBA field maps (current and next timeline frame) are blended in the shader, so playback is smooth rather than stepping at the data frame rate; a 64³ tiling 3D noise texture is raymarched through a thin spherical shell in 10 steps (6 on mobile). The noise drift is driven by the timeline frame, not wall-clock, so paused means paused. The satellite base is loaded lazily at 8K, with a 2K fallback for smaller GPUs. No new framework or runtime dependency was added.
 
 The FOSS survey for this mode: [CesiumJS CloudCollection](https://cesium.com/learn/cesiumjs/ref-doc/CloudCollection.html) (Apache 2.0) for the billboard-cloud model, [Eanpa-Sky](https://github.com/SkyeShark/Eanpa-Sky) and [three-volumetric-clouds](https://github.com/FarazzShaikh/three-volumetric-clouds) for volumetric-cloud shader patterns, [NASA GIBS/Worldview](https://earthdata.nasa.gov/) for open satellite imagery, and the NASA Blue Marble / Solar System Scope day map for the base texture.
 
@@ -170,7 +170,7 @@ Range switches are blocking: a small non-dismissable loading card blurs and paus
 - **Wind trails** — screen-space particles advected by the flow field and painted into a persistent 2D canvas that is faded with `destination-out` every frame. That gives smooth, curved comet tails that fade naturally instead of straight polyline chords. The same wind field feeds the barbs and the hover probe.
 - **Basemap baked once** from Natural Earth into a 1536 × 768 canvas: land fill, bathymetric grain, coastline bloom, borders, graticule. A vector coastline pass sits above the data for crisp edges at zoom.
 - **Overlay canvas** for city labels, home marker, wind barbs, H/L centres and the probe crosshair.
-- **Earth mode clouds** — a separate full-screen raymarch pass over the satellite globe: 2° flux fields, a 64³ tiling 3D noise texture, 8 shell samples (5 mobile), sun/scattering shading and a moisture/CAPE/temperature tint. FILL/LINES/FLOW layers and wind trails are suppressed in this mode; the satellite and clouds carry the story.
+- **Earth mode clouds** — a separate full-screen raymarch pass over the satellite globe: 2° flux fields, a 64³ tiling 3D noise texture, 10 shell samples (6 mobile), sun/scattering shading and a moisture/CAPE/temperature tint. FILL/LINES/FLOW layers and wind trails are suppressed in this mode; the satellite and clouds carry the story.
 - **Derived fields** computed on the native grid and cached per frame: advection (wind × gradient), divergence, pressure tendency, dew-point depression.
 - **Snapshot** — per-field int16 + offset/scale, lazy decode, IndexedDB not needed.
 

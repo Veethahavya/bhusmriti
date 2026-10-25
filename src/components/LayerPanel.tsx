@@ -20,7 +20,6 @@ export function LayerPanel() {
   const setBarbs = useAtmos((s) => s.setBarbs);
   const setVarInfo = useAtmos((s) => s.setVarInfo);
   const visualMode = useAtmos((s) => s.visualMode);
-  const setVisualMode = useAtmos((s) => s.setVisualMode);
   const [closed, setClosed] = useState<Record<string, boolean>>({});
   const data = useAtmos((s) => s.data);
   const DERIVED = new Set(['adv_temp', 'adv_moist', 'div10', 'ptend3', 'dtd']);
@@ -53,9 +52,6 @@ export function LayerPanel() {
           title="Station-model wind barbs. Staff points from where the wind comes; half feather = 5 kt, full = 10 kt, triangle = 50 kt."
         >
           <span className="qdot" /> WIND BARBS
-        </button>
-        <button className={`quick ${visualMode === 'earth' ? 'on' : ''}`} onClick={() => setVisualMode(visualMode === 'earth' ? 'globe' : 'earth')} title="Toggle satellite Earth view">
-          <span className="qdot" /> EARTH
         </button>
         <button className="quick ghost" onClick={clearOverlays}>CLEAR</button>
       </div>

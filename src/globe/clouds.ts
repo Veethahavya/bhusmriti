@@ -53,19 +53,30 @@ function noiseTexture(): THREE.Data3DTexture {
 
 export class CloudPass {
   mesh: THREE.Mesh;
-  private dataA: Uint8Array;
-  private dataB: Uint8Array;
-  private texA: THREE.DataTexture;
-  private texB: THREE.DataTexture;
+  private dataA0: Uint8Array;
+  private dataB0: Uint8Array;
+  private dataA1: Uint8Array;
+  private dataB1: Uint8Array;
+  private texA0: THREE.DataTexture;
+  private texB0: THREE.DataTexture;
+  private texA1: THREE.DataTexture;
+  private texB1: THREE.DataTexture;
   private noise: THREE.Data3DTexture;
   private uniforms: Record<string, THREE.IUniform>;
+  private lastI = -1;
+  private lastJ = -1;
+  private lastData: AtmosData | null = null;
 
   constructor(scene: THREE.Scene, common: Record<string, THREE.IUniform>) {
-    this.dataA = new Uint8Array(NX * NY * 4);
-    this.dataB = new Uint8Array(NX * NY * 4);
-    this.texA = new THREE.DataTexture(this.dataA, NX, NY, THREE.RGBAFormat, THREE.UnsignedByteType);
-    this.texB = new THREE.DataTexture(this.dataB, NX, NY, THREE.RGBAFormat, THREE.UnsignedByteType);
-    for (const t of [this.texA, this.texB]) {
+    this.dataA0 = new Uint8Array(NX * NY * 4);
+    this.dataB0 = new Uint8Array(NX * NY * 4);
+    this.dataA1 = new Uint8Array(NX * NY * 4);
+    this.dataB1 = new Uint8Array(NX * NY * 4);
+    this.texA0 = new THREE.DataTexture(this.dataA0, NX, NY, THREE.RGBAFormat, THREE.UnsignedByteType);
+    this.texB0 = new THREE.DataTexture(this.dataB0, NX, NY, THREE.RGBAFormat, THREE.UnsignedByteType);
+    this.texA1 = new THREE.DataTexture(this.dataA1, NX, NY, THREE.RGBAFormat, THREE.UnsignedByteType);
+    this.texB1 = new THREE.DataTexture(this.dataB1, NX, NY, THREE.RGBAFormat, THREE.UnsignedByteType);
+    for (const t of [this.texA0, this.texB0, this.texA1, this.texB1]) {
       t.minFilter = THREE.LinearFilter;
       t.magFilter = THREE.LinearFilter;
       t.wrapS = THREE.ClampToEdgeWrapping;
@@ -76,11 +87,12 @@ export class CloudPass {
     this.noise = noiseTexture();
     this.uniforms = {
       ...common,
-      uFieldsA: { value: this.texA },
-      uFieldsB: { value: this.texB },
+      uFieldsA0: { value: this.texA0 }, uFieldsA1: { value: this.texA1 },
+      uFieldsB0: { value: this.texB0 }, uFieldsB1: { value: this.texB1 },
+      uMix: { value: 0 },
       uNoise: { value: this.noise },
-      uNoiseScale: { value: 4.2 },
-      uSteps: { value: window.innerWidth < 760 ? 5 : 8 },
+      uNoiseScale: { value: 2.9 },
+      uSteps: { value: window.innerWidth < 760 ? 6 : 10 },
       uCloudTime: { value: 0 },
     };
     const mat = new THREE.RawShaderMaterial({
@@ -102,8 +114,7 @@ export class CloudPass {
 
   setVisible(v: boolean) { this.mesh.visible = v; }
 
-  update(data: AtmosData, frame: number, time: number) {
-    const t = Math.round(frame);
+  private build(data: AtmosData, t: number, dataA: Uint8Array, dataB: Uint8Array) {
     const has = (f: string) => data.has(f);
     for (let y = 0; y < NY; y++) {
       const lat = -90 + y * 2;
@@ -128,21 +139,32 @@ export class CloudPass {
         const dr = (Number.isFinite(wd) ? wd : 0) * Math.PI / 180;
         const u = -sp * Math.sin(dr), v = -sp * Math.cos(dr);
         const i = (x + y * NX) * 4;
-        this.dataA[i] = Math.round(cloud * 255); this.dataA[i + 1] = Math.round(precip * 255);
-        this.dataA[i + 2] = Math.round(capeN * 255); this.dataA[i + 3] = Math.round(tempN * 255);
-        this.dataB[i] = Math.round(rhN * 255); this.dataB[i + 1] = Math.round(pwN * 255);
-        this.dataB[i + 2] = Math.round(Math.max(0, Math.min(1, 0.5 + u / 70)) * 255);
-        this.dataB[i + 3] = Math.round(Math.max(0, Math.min(1, 0.5 + v / 70)) * 255);
+        dataA[i] = Math.round(cloud * 255); dataA[i + 1] = Math.round(precip * 255);
+        dataA[i + 2] = Math.round(capeN * 255); dataA[i + 3] = Math.round(tempN * 255);
+        dataB[i] = Math.round(rhN * 255); dataB[i + 1] = Math.round(pwN * 255);
+        dataB[i + 2] = Math.round(Math.max(0, Math.min(1, 0.5 + u / 70)) * 255);
+        dataB[i + 3] = Math.round(Math.max(0, Math.min(1, 0.5 + v / 70)) * 255);
       }
     }
-    this.texA.needsUpdate = true;
-    this.texB.needsUpdate = true;
+  }
+
+  update(data: AtmosData, frame: number, time: number) {
+    const i = Math.max(0, Math.min(data.times.length - 1, Math.floor(frame)));
+    const j = Math.min(i + 1, data.times.length - 1);
+    if (i !== this.lastI || j !== this.lastJ || data !== this.lastData) {
+      this.build(data, i, this.dataA0, this.dataB0);
+      this.build(data, j, this.dataA1, this.dataB1);
+      this.texA0.needsUpdate = true; this.texB0.needsUpdate = true;
+      this.texA1.needsUpdate = true; this.texB1.needsUpdate = true;
+      this.lastI = i; this.lastJ = j; this.lastData = data;
+    }
+    this.uniforms.uMix.value = Math.max(0, Math.min(1, frame - i));
     this.uniforms.uCloudTime.value = time;
   }
 
   dispose() {
     this.mesh.geometry.dispose();
     (this.mesh.material as THREE.Material).dispose();
-    this.texA.dispose(); this.texB.dispose(); this.noise.dispose();
+    this.texA0.dispose(); this.texB0.dispose(); this.texA1.dispose(); this.texB1.dispose(); this.noise.dispose();
   }
 }

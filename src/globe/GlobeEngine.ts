@@ -1035,7 +1035,7 @@ export class GlobeEngine {
 
     this.maybeResumeTrails(now);
     if (this.state?.visualMode === 'earth' && this.data) {
-      this.clouds.update(this.data, this.frame, now / 1000);
+      this.clouds.update(this.data, this.frame, this.frame * 0.55);
     }
     if (!this.trailsPaused && !this.rangeLoading && this.state?.visualMode !== 'earth') this.trails.update(dt);
 

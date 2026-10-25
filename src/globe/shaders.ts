@@ -305,8 +305,11 @@ void main() {
 
 export const CLOUD_FRAG = COMMON + /* glsl */ `
 precision highp sampler3D;
-uniform sampler2D uFieldsA;
-uniform sampler2D uFieldsB;
+uniform sampler2D uFieldsA0;
+uniform sampler2D uFieldsA1;
+uniform sampler2D uFieldsB0;
+uniform sampler2D uFieldsB1;
+uniform float uMix;
 uniform sampler3D uNoise;
 uniform float uNoiseScale;
 uniform float uCloudTime;
@@ -345,15 +348,15 @@ void main() {
     vec3 p = uCamPos + rd * (start + (float(i) + 0.5) * stepLen);
     float hgt = (length(p) - R_IN) / (R_OUT - R_IN);
     vec2 uv = sphereUv(normalize(p));
-    vec4 A = texture(uFieldsA, uv);
-    vec4 B = texture(uFieldsB, uv);
+    vec4 A = mix(texture(uFieldsA0, uv), texture(uFieldsA1, uv), uMix);
+    vec4 B = mix(texture(uFieldsB0, uv), texture(uFieldsB1, uv), uMix);
     float windU = (B.b - 0.5) * 2.0;
     float windV = (B.a - 0.5) * 2.0;
 
-    vec3 np = p * uNoiseScale + vec3(windU * uCloudTime * 0.16, windV * uCloudTime * 0.16, 0.0);
-    float n = texture(uNoise, np).r * 0.56
-            + texture(uNoise, np * 2.13 + vec3(13.1)).r * 0.29
-            + texture(uNoise, np * 4.37 + vec3(7.7)).r * 0.15;
+    vec3 np = p * uNoiseScale + vec3(windU * uCloudTime * 0.10, windV * uCloudTime * 0.10, 0.0);
+    float n = texture(uNoise, np).r * 0.55
+            + texture(uNoise, np * 1.87 + vec3(13.1)).r * 0.30
+            + texture(uNoise, np * 3.41 + vec3(7.7)).r * 0.15;
 
     float cover = A.r;
     float core = smoothstep(0.42, 0.72, n + cover * 0.20);
@@ -366,7 +369,7 @@ void main() {
       vec3 col = mix(vec3(0.93, 0.95, 1.0), thermal, 0.24);
       col = mix(col, vec3(0.32, 0.52, 0.96), smoothstep(0.02, 0.55, A.g) * 0.40);
       col = mix(col, vec3(1.0, 0.44, 0.33), smoothstep(0.12, 0.80, A.b) * 0.34);
-      col = mix(col, vec3(0.45, 0.66, 0.98), smoothstep(0.22, 0.88, B.g) * 0.22);
+      col = mix(col, vec3(0.62, 0.76, 0.98), smoothstep(0.22, 0.88, B.g) * 0.12);
 
       vec3 nrm = normalize(p);
       float sun = max(dot(nrm, uSunDir), 0.0);
