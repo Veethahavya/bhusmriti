@@ -96,13 +96,15 @@ A cron alternative to the server:
 
 ### Two visual languages
 
-**GLOBE** is the conventional notation — one colour wash, contour lines, vectors and barbs. **EARTH** is the satellite mode: the NASA Blue Marble / Solar System Scope 8K imagery with a raymarched volumetric cloud shell. Cloud density follows the model cloud cover, the clouds drift with the 10 m wind, and their colour blends column moisture, CAPE and surface temperature. Toggle it in the top bar or from the FIELDS quick row.
+**GLOBE** is the conventional notation — one colour wash, contour lines, vectors and barbs. **EARTH** is the satellite mode: 8K satellite imagery, a field of wind-gust arrows that trail exaggerated animated smoke, and a translucent ocean whose water colour is sea-surface temperature. The arrows are coloured by wind speed; the ocean current drives the water motion. Toggle it in the top bar.
 
-![Satellite Earth with flux clouds](docs/aeros-earth.png)
+![Satellite Earth with wind gusts and ocean currents](docs/aeros-earth.png)
 
-The cloud shell is built entirely in the existing WebGL2 engine: two 2° RGBA field maps (current and next timeline frame) are blended in the shader, so playback is smooth rather than stepping at the data frame rate; a 64³ tiling 3D noise texture is raymarched through a thin spherical shell in 10 steps (6 on mobile). The noise drift is driven by the timeline frame, not wall-clock, so paused means paused. The satellite base is loaded lazily at 8K, with a 2K fallback for smaller GPUs. No new framework or runtime dependency was added.
+The gust field is a canvas layer over the WebGL globe: arrows sample the active flow on a coarse grid, their tails are tapered, gradient-filled, wobbling smoke strokes with drifting puffs, and they freeze with the timeline when paused. The ocean water is a full-screen WebGL pass over the ocean mask; it samples the new 2° `ocean_current_velocity` / `ocean_current_direction` fields plus SST, tints the water by temperature, and advects the surface ripples with the current. Both are driven by the timeline frame, not wall-clock, so paused means paused. The previous volumetric-cloud deck is retired from EARTH so the satellite, wind and water are visible.
 
-The FOSS survey for this mode: [CesiumJS CloudCollection](https://cesium.com/learn/cesiumjs/ref-doc/CloudCollection.html) (Apache 2.0) for the billboard-cloud model, [Eanpa-Sky](https://github.com/SkyeShark/Eanpa-Sky) and [three-volumetric-clouds](https://github.com/FarazzShaikh/three-volumetric-clouds) for volumetric-cloud shader patterns, [NASA GIBS/Worldview](https://earthdata.nasa.gov/) for open satellite imagery, and the NASA Blue Marble / Solar System Scope day map for the base texture.
+The new **Ocean surface current** layer also appears under **Circulation** in GLOBE and can be selected as the flow layer; its streamlines then advect with the surface current. Ocean current data comes from the [Open-Meteo Marine API](https://open-meteo.com/en/docs/marine-weather-api) (separate quota from the land hydrology) and is available in the 24 h, 7 d and 30 d ranges. The long atmosphere archive has no ocean-current field.
+
+FOSS survey for this mode: [CesiumJS CloudCollection](https://cesium.com/learn/cesiumjs/ref-doc/CloudCollection.html), [Eanpa-Sky](https://github.com/SkyeShark/Eanpa-Sky), [three-volumetric-clouds](https://github.com/FarazzShaikh/three-volumetric-clouds), [NASA GIBS/Worldview](https://earthdata.nasa.gov/), and the [Solar System Scope](https://www.solarsystemscope.com/textures/) 8K day map (CC BY 4.0; NASA Blue Marble 2K fallback).
 
 Notation is locked to keep it legible: one colour wash and one flow at a time. When a type is already occupied, its button is faded and struck through; you cannot accidentally create two fills or two flow layers. **LINES** is contour-only — constant zero regions no longer flood whole countries. CAPE and snow are clean isopleths now.
 
@@ -152,6 +154,7 @@ The control room is almost full-screen: appearance (text and interface size, hig
 | Land & hydrology (skin/SST, cloud, soil, ET₀, VPD, snow, radiation, ω, Z500, gusts, precipitation) | [Open-Meteo historical forecast API](https://open-meteo.com/) | 7.5° → 2° | 25 hourly |
 | Basemap | [Natural Earth](https://www.naturalearthdata.com/) 50m land/coast/lakes, 110m borders | vector | — |
 | Satellite Earth | NASA Blue Marble 2K (public domain) · [Solar System Scope](https://www.solarsystemscope.com/textures/) 8K day map (CC BY 4.0) | 2K / 8K equirectangular | — |
+| Ocean surface currents | [Open-Meteo Marine API](https://open-meteo.com/en/docs/marine-weather-api) `ocean_current_velocity`, `ocean_current_direction` | 7.5° sample → 2°/3° | 31 days |
 | Ocean surface currents | [Open-Meteo Marine API](https://open-meteo.com/en/docs/marine-weather-api) `ocean_current_velocity`, `ocean_current_direction` at 7.5° sample points | 2° / 3° upsampled | 31 days |
 | Time ranges | 24 h / 7 days / 30 days / long archive / custom | 1° hourly · 2° 3-hourly · 3° 12-hourly · 3° daily | 25 / 57 / 61 / 148 |
 
