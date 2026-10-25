@@ -300,3 +300,20 @@ void main() {
   gl_FragColor = vec4(vColor * 1.35, a);
 }
 `;
+
+export const FLOW_FRAG = COMMON + /* glsl */ `
+uniform sampler2D uFlowMap;
+uniform float uFlowOpacity;
+
+void main() {
+  vec3 rd = rayDir();
+  vec3 p;
+  float t;
+  if (!hitSphere(uCamPos, rd, p, t)) discard;
+  vec2 uv = sphereUv(p);
+  vec4 c = texture(uFlowMap, uv);
+  if (c.a < 0.01) discard;
+  fragColor = vec4(c.rgb, c.a * uFlowOpacity);
+}
+`;
+

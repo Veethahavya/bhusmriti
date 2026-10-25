@@ -9,6 +9,7 @@ import { solarVec, subsolar } from '../lib/geo';
 import { buildBasemap } from './basemap';
 import { Overlay, type OverlayHost } from './overlay';
 import { WindTrails, type TrailSample } from './trails';
+import { FlowPass } from './flowpass';
 import { ATMOS_FRAG, DATA_FRAG, FULLSCREEN_VERT, GLOBE_FRAG } from './shaders';
 
 const DEG = Math.PI / 180;
@@ -23,6 +24,7 @@ export type EngineState = {
   flowLayer: string | null;
   flowColor: FlowColor;
   playing: boolean;
+  dataset: '24h' | 'week' | 'month' | 'long';
   particles: boolean;
   density: number;
   barbs: boolean;
@@ -204,6 +206,7 @@ export class GlobeEngine {
   private readySent = false;
 
   private trails: WindTrails;
+  private flowpass: FlowPass;
   private coast: THREE.LineSegments | null = null;
   private panEnabled = true;
   private trailsPaused = false;
@@ -282,6 +285,8 @@ export class GlobeEngine {
 
     this.trails = new WindTrails(container, this.screenWind, this.globeBounds);
     this.trails.setVisible(false);
+    this.flowpass = new FlowPass(this.fullScene, this.common);
+    this.flowpass.setVisible(false);
 
     this.makeStars();
     this.addCoastlines();
@@ -539,7 +544,12 @@ export class GlobeEngine {
       return;
     }
     this.ensureFlowBuffers(this.data, def.field!);
-    this.trails.setVisible(state.particles);
+    const rasterRanges = state.dataset !== 'long';
+    const rasterLayers = new Set(['wind10', 'wind850', 'wind500', 'wind250', 'ocean_current']);
+    const useRaster = rasterRanges && rasterLayers.has(def.id);
+    this.flowpass.setFlow(useRaster ? `/data/flows/${state.dataset}/${def.id}/${String(Math.round(this.frame)).padStart(3, '0')}.png` : null);
+    this.flowpass.setVisible(useRaster);
+    this.trails.setVisible(!useRaster && state.particles);
     this.trails.setDensity(state.density);
     const key = `${def.id}|${state.flowColor}|${Math.round(this.frame * 20)}`;
     if (force || key !== this.flowFieldKey) {

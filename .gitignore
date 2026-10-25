@@ -7,3 +7,5 @@ dist/
 
 __pycache__/
 public/data/
+.pydeps/
+.venv-ds/

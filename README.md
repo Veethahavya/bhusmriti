@@ -94,6 +94,16 @@ A cron alternative to the server:
 
 ![Morning briefing](docs/aeros-briefing.png)
 
+### Datashader flow overlays
+
+Flow layers are pre-rendered as transparent equirectangular PNGs by `pipeline/render_flows.py` using [datashader](https://github.com/holoviz/datashader). Streamlines are integrated from the stored u/v fields, rasterised as a speed/density aggregation, and sampled on the globe by a WebGL pass instead of the old canvas particle trails. Generate with:
+
+```bash
+.venv-ds/bin/python pipeline/render_flows.py wind10
+```
+
+The overlays are served from `public/data/flows/<range>/<flow>/<frame>.png`. Ranges/layers without an overlay fall back to the existing wind trails. This is an early datashader integration: the current prototype renders wind10, 850, 500, 250 and ocean_current for the 24 h range; the 7 d/30 d frame sets and the long archive still need a full render pass.
+
 ### Ocean surface current
 
 **Ocean surface current** is a flow layer under **Circulation**. Select it as the flow layer and its streamlines advect with the surface current.
