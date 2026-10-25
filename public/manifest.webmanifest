@@ -1,0 +1,10 @@
+{
+  "name": "Bhūsmṛti · planetary flux atlas",
+  "short_name": "Bhūsmṛti",
+  "description": "24 hours of global wind, heat and moisture — read the flow before it arrives.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#04080b",
+  "theme_color": "#04080b",
+  "icons": [{ "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}
