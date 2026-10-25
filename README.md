@@ -94,6 +94,10 @@ A cron alternative to the server:
 
 ![Morning briefing](docs/aeros-briefing.png)
 
+### Open items
+
+See **[OPEN_ITEMS.md](OPEN_ITEMS.md)**. The EARTH wind-gust smoke and ocean-water animation are explicitly an open item; they are placeholders and need a dedicated motion/realism pass.
+
 ### Two visual languages
 
 **GLOBE** is the conventional notation — one colour wash, contour lines, vectors and barbs. **EARTH** is the satellite mode: 8K satellite imagery, a field of wind-gust arrows that trail exaggerated animated smoke, and a translucent ocean whose water colour is sea-surface temperature. The arrows are coloured by wind speed; the ocean current drives the water motion. Toggle it in the top bar.
@@ -101,6 +105,8 @@ A cron alternative to the server:
 ![Satellite Earth with wind gusts and ocean currents](docs/aeros-earth.png)
 
 The gust field is a canvas layer over the WebGL globe: arrows sample the active flow on a coarse grid, their tails are tapered, gradient-filled, wobbling smoke strokes with drifting puffs, and they freeze with the timeline when paused. The ocean water is a full-screen WebGL pass over the ocean mask; it samples the new 2° `ocean_current_velocity` / `ocean_current_direction` fields plus SST, tints the water by temperature, and advects the surface ripples with the current. Both are driven by the timeline frame, not wall-clock, so paused means paused. The previous volumetric-cloud deck is retired from EARTH so the satellite, wind and water are visible.
+
+![Ocean surface current flow](docs/aeros-ocean-flow.png)
 
 The new **Ocean surface current** layer also appears under **Circulation** in GLOBE and can be selected as the flow layer; its streamlines then advect with the surface current. Ocean current data comes from the [Open-Meteo Marine API](https://open-meteo.com/en/docs/marine-weather-api) (separate quota from the land hydrology) and is available in the 24 h, 7 d and 30 d ranges. The long atmosphere archive has no ocean-current field.
 

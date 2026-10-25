@@ -33,7 +33,7 @@ export class WindTrails {
   private dpr = 1;
   private density = 1;
   private visible = true;
-  private smoke = false;
+  private gain = 1;
   private mobile = false;
   private cleared = true;
 
@@ -48,14 +48,6 @@ export class WindTrails {
     this.resize(parent.clientWidth, parent.clientHeight, Math.min(devicePixelRatio, 1.75));
   }
 
-  setSmoke(v: boolean) {
-    if (this.smoke === v) return;
-    this.smoke = v;
-    this.setDensity(this.density);
-    this.clear();
-    this.respawnAll();
-  }
-
   setPalette(palette: Palette) {
     const key = palette.map((p) => p[1]).join('|');
     if (key === this.paletteKey) return;
@@ -66,6 +58,8 @@ export class WindTrails {
     });
   }
 
+  setGain(g: number) { this.gain = Math.max(0.5, Math.min(3, g)); }
+
   setVisible(v: boolean) {
     this.visible = v;
     if (!v) this.clear();
@@ -73,7 +67,7 @@ export class WindTrails {
 
   setDensity(d: number) {
     this.density = d;
-    const n = Math.round((this.mobile ? 1300 : 3200) * d * (this.smoke ? 0.40 : 1));
+    const n = Math.round((this.mobile ? 1300 : 3200) * d);
     this.resizeParticles(Math.max(700, Math.min(7200, n)));
   }
 
@@ -137,13 +131,12 @@ export class WindTrails {
 
     // fade the existing trail
     ctx.globalCompositeOperation = 'destination-out';
-    ctx.fillStyle = `rgba(0,0,0,${this.smoke ? 0.022 : FADE})`;
+    ctx.fillStyle = `rgba(0,0,0,${FADE})`;
     ctx.fillRect(0, 0, this.width, this.height);
     ctx.globalCompositeOperation = 'source-over';
 
-    const DENS = this.smoke ? 4 : 1;
-    const paths = Array.from({ length: BINS }, () => Array.from({ length: DENS }, () => new Path2D()));
-    const used = new Uint8Array(BINS * DENS);
+    const paths = Array.from({ length: BINS }, () => new Path2D());
+    const used = new Uint8Array(BINS);
 
     for (const p of this.particles) {
       const s = this.sample(p.x, p.y);
@@ -151,18 +144,17 @@ export class WindTrails {
         this.spawn(p);
         continue;
       }
-      const nx = p.x + s.vx * d;
-      const ny = p.y + s.vy * d;
+      const nx = p.x + s.vx * d * this.gain;
+      const ny = p.y + s.vy * d * this.gain;
       if (nx < -40 || nx > this.width + 40 || ny < -40 || ny > this.height + 40) {
         this.spawn(p);
         continue;
       }
       const bin = Math.max(0, Math.min(BINS - 1, s.color));
-      const dens = this.smoke ? Math.min(DENS - 1, Math.floor(Math.max(0, Math.min(1, s.density ?? 0.5)) * DENS)) : 0;
-      const path = paths[bin][dens];
+      const path = paths[bin];
       path.moveTo(p.x, p.y);
       path.lineTo(nx, ny);
-      used[bin * DENS + dens] = 1;
+      used[bin] = 1;
       p.x = nx;
       p.y = ny;
       p.age += d;
@@ -176,29 +168,15 @@ export class WindTrails {
     ctx.clip();
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
-    if (this.smoke) {
-      ctx.filter = 'blur(2.5px)';
-      for (let b = 0; b < BINS; b++) {
-        ctx.strokeStyle = this.colors[b] ?? 'rgb(180,230,255)';
-        for (let q = 0; q < DENS; q++) {
-          if (!used[b * DENS + q]) continue;
-          const path = paths[b][q];
-          ctx.lineWidth = 3.0 + q * 2.4;
-          ctx.globalAlpha = 0.012 + q * 0.014;
-          ctx.stroke(path);
-        }
-      }
-      ctx.filter = 'none';
-    } else {
-      const lw = this.mobile ? 0.95 : 1.15;
+
+      const lw = (this.mobile ? 0.95 : 1.15) * this.gain;
       ctx.lineWidth = lw;
       for (let b = 0; b < BINS; b++) {
         if (!used[b] || !this.colors[b]) continue;
         ctx.strokeStyle = this.colors[b];
-        ctx.globalAlpha = 0.78;
-        ctx.stroke(paths[b][0]);
+        ctx.globalAlpha = Math.min(1, 0.78 * Math.sqrt(this.gain));
+        ctx.stroke(paths[b]);
       }
-    }
     ctx.globalAlpha = 1;
     ctx.restore();
   }

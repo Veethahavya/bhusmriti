@@ -65,7 +65,7 @@ export function LayerPanel() {
       {visualMode === 'earth' && (
         <div className="earth-note">
           <b>EARTH VIEW</b>
-          Satellite imagery with volumetric flux clouds. Density follows cloud cover; drift follows 10 m wind; colour blends moisture, CAPE and temperature. Atlas layers are hidden.
+          Satellite imagery with wind-gust smoke arrows and translucent temperature-shaded ocean water. Atlas layers are hidden.
         </div>
       )}
 

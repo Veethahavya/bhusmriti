@@ -57,6 +57,7 @@ export interface LayerDef {
   derived?: DerivedId;
   lineOnly?: boolean;
   defaultOpacity: number;
+  trailGain?: number;
   description: string;
   read: string;
   glyph: GlyphId;

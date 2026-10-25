@@ -9,7 +9,6 @@ import { solarVec, subsolar } from '../lib/geo';
 import { buildBasemap } from './basemap';
 import { Overlay, type OverlayHost } from './overlay';
 import { WindTrails, type TrailSample } from './trails';
-import { CloudPass } from './clouds';
 import { GustLayer } from './gusts';
 import { WaterPass } from './water';
 import { ATMOS_FRAG, DATA_FRAG, FULLSCREEN_VERT, GLOBE_FRAG } from './shaders';
@@ -206,7 +205,6 @@ export class GlobeEngine {
   private readySent = false;
 
   private trails: WindTrails;
-  private clouds: CloudPass;
   private gusts: GustLayer;
   private water: WaterPass;
   private coast: THREE.LineSegments | null = null;
@@ -291,7 +289,6 @@ export class GlobeEngine {
 
     this.trails = new WindTrails(container, this.screenWind, this.globeBounds);
     this.trails.setVisible(false);
-    this.clouds = new CloudPass(this.fullScene, this.common);
     this.water = new WaterPass(this.fullScene, this.common, this.maskU);
     this.gusts = new GustLayer(container, this.screenWind, this.globeBounds);
 
@@ -516,7 +513,6 @@ export class GlobeEngine {
     const earth = state.visualMode === 'earth';
     if (earth) this.loadEarthTexture();
     this.globeU.uEarthMode.value = earth ? 1 : 0;
-    this.clouds.setVisible(false);
     this.gusts.setVisible(earth);
     this.water.setVisible(earth && !!this.data?.has('ocean_current_velocity'));
     if (this.coast) this.coast.visible = !earth;
@@ -637,6 +633,7 @@ export class GlobeEngine {
       grid: { nx: g.nx, ny: g.ny, lonMin: g.lonMin, latMin: g.latMin, step: g.step },
     };
     this.trails.setPalette(palette);
+    this.trails.setGain(def.trailGain ?? 1);
     this.gusts.setPalette(palette);
   }
 
@@ -1073,7 +1070,6 @@ export class GlobeEngine {
     this.detach();
     this.overlay.destroy();
     this.trails.destroy();
-    this.clouds.dispose();
     this.water.dispose();
     this.gusts.destroy();
     for (const p of this.passes.values()) p.dispose(this.fullScene);

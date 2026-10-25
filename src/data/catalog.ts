@@ -15,8 +15,8 @@ const P: Record<string, Palette> = {
     [0.78, '#c7b8ff'], [0.9, '#e39cff'], [1, '#ff7ad9'],
   ],
   current: [
-    [0, '#0a2f5c'], [0.2, '#12649a'], [0.4, '#1aa3b8'], [0.58, '#3fe0c8'],
-    [0.74, '#a8f0d6'], [0.88, '#f5d98c'], [1, '#ff8f5e'],
+    [0, '#2a9dcc'], [0.2, '#43cfe0'], [0.4, '#6ee8d8'], [0.58, '#a8f0d6'],
+    [0.74, '#d9f4c4'], [0.88, '#f5d98c'], [1, '#ff8f5e'],
   ],
   temp: [
     [0, '#2b1b4d'], [0.14, '#34558f'], [0.28, '#3c86a8'], [0.42, '#4fb39a'],
@@ -126,8 +126,8 @@ export const LAYERS: LayerDef[] = [
 
   {
     id: 'ocean_current', label: 'Ocean surface current', short: 'Ocean flow', sub: 'surface · km/h', group: 'flow', kind: 'flow',
-    unit: 'km/h', decimals: 1, palette: P.current, range: [0, 12], field: 'ocean_current_velocity', dirField: 'ocean_current_direction',
-    defaultOpacity: 1, pattern: 0, glyph: 'wind',
+    unit: 'km/h', decimals: 1, palette: P.current, range: [0, 8], field: 'ocean_current_velocity', dirField: 'ocean_current_direction',
+    defaultOpacity: 1, trailGain: 1.6, pattern: 0, glyph: 'wind',
     description: 'The surface ocean current. In the atlas it is a flow layer; in EARTH it drives the translucent, temperature-shaded water.',
     read: 'Western boundary currents are narrow and fast; eddies and convergence zones concentrate marine heat and nutrients.',
   },
