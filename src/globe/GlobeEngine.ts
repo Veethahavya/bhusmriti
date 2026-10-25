@@ -9,6 +9,7 @@ import { solarVec, subsolar } from '../lib/geo';
 import { buildBasemap } from './basemap';
 import { Overlay, type OverlayHost } from './overlay';
 import { WindTrails, type TrailSample } from './trails';
+import { CloudPass } from './clouds';
 import { ATMOS_FRAG, DATA_FRAG, FULLSCREEN_VERT, GLOBE_FRAG } from './shaders';
 
 const DEG = Math.PI / 180;
@@ -22,7 +23,7 @@ export type EngineState = {
   opacity: Record<string, number>;
   flowLayer: string | null;
   flowColor: FlowColor;
-  visualMode: 'atlas' | 'smoke';
+  visualMode: 'globe' | 'earth';
   particles: boolean;
   density: number;
   barbs: boolean;
@@ -203,6 +204,10 @@ export class GlobeEngine {
   private readySent = false;
 
   private trails: WindTrails;
+  private clouds: CloudPass;
+  private coast: THREE.LineSegments | null = null;
+  private earthTex: THREE.Texture | null = null;
+  private earthLoading = false;
   private panEnabled = true;
   private trailsPaused = false;
   private trailsResumeAt = 0;
@@ -269,6 +274,8 @@ export class GlobeEngine {
     this.globeU = {
       ...this.common,
       uBase: { value: placeholderBase },
+      uEarth: { value: placeholderBase },
+      uEarthMode: { value: 0 },
       uMask: this.maskU,
       uReady: { value: 0 },
     };
@@ -280,6 +287,7 @@ export class GlobeEngine {
 
     this.trails = new WindTrails(container, this.screenWind, this.globeBounds);
     this.trails.setVisible(false);
+    this.clouds = new CloudPass(this.fullScene, this.common);
 
     this.makeStars();
     this.addCoastlines();
@@ -358,6 +366,8 @@ export class GlobeEngine {
             void main(){ gl_FragColor = vec4(0.48, 0.98, 0.9, 0.22 * vFade); }`,
         });
         const coast = new THREE.LineSegments(geo, mat);
+        this.coast = coast;
+        coast.visible = this.state?.visualMode !== 'earth';
         coast.frustumCulled = false;
         coast.renderOrder = 60;
         this.fullScene.add(coast);
@@ -456,9 +466,7 @@ export class GlobeEngine {
       this.syncFlow(state);
     }
     if (!prev || state.visualMode !== prev.visualMode) {
-      this.trails.setSmoke(state.visualMode === 'smoke');
-      this.syncLayers(state);
-      this.syncFlow(state, true);
+      this.applyVisualMode(state);
     }
     if (!prev || state.home !== prev.home) {
       // overlay reads home from state each draw
@@ -481,6 +489,40 @@ export class GlobeEngine {
     this.flowSpeedBuf = new Float32Array(g.n);
     this.flowDirBuf = new Float32Array(g.n);
     this.flowFieldKey = '';
+  }
+
+  private loadEarthTexture() {
+    if (this.earthTex || this.earthLoading) return;
+    this.earthLoading = true;
+    const max = this.renderer.capabilities.maxTextureSize;
+    const src = max >= 8192 ? '/geo/earth-satellite-8k.jpg' : '/geo/earth-satellite.jpg';
+    const tex = new THREE.TextureLoader().load(src, (t) => {
+      t.colorSpace = THREE.SRGBColorSpace;
+      t.anisotropy = Math.min(8, this.renderer.capabilities.getMaxAnisotropy());
+      this.globeU.uEarth.value = t;
+      this.earthTex = t;
+      this.earthLoading = false;
+    });
+    tex.colorSpace = THREE.SRGBColorSpace;
+  }
+
+  private applyVisualMode(state: EngineState) {
+    const earth = state.visualMode === 'earth';
+    if (earth) this.loadEarthTexture();
+    this.globeU.uEarthMode.value = earth ? 1 : 0;
+    this.clouds.setVisible(earth);
+    if (this.coast) this.coast.visible = !earth;
+    if (earth) {
+      this.trailsPaused = true;
+      this.trails.clear();
+      this.trails.setVisible(false);
+    } else {
+      this.trailsPaused = false;
+      this.syncFlow(state, true);
+      this.trails.setVisible(state.particles && state.visualMode !== 'earth');
+      this.trails.reset();
+    }
+    this.syncLayers(state);
   }
 
   private syncLayers(state: EngineState) {
@@ -517,7 +559,7 @@ export class GlobeEngine {
         p.update(this.data!, this.derived!, this.frame);
       }
       p.setMode(s.mode, state.opacity[s.def.id] ?? s.def.defaultOpacity);
-      p.mesh.visible = state.visualMode !== 'smoke';
+      p.mesh.visible = state.visualMode !== 'earth';
       p.mesh.renderOrder = 10 + i;
     });
     this.frameDirty = true;
@@ -535,7 +577,7 @@ export class GlobeEngine {
       return;
     }
     this.ensureFlowBuffers(this.data, def.field!);
-    this.trails.setVisible(state.particles);
+    this.trails.setVisible(state.particles && state.visualMode !== 'earth');
     this.trails.setDensity(state.density);
     const key = `${def.id}|${state.flowColor}|${Math.round(this.frame * 20)}`;
     if (force || key !== this.flowFieldKey) {
@@ -586,7 +628,7 @@ export class GlobeEngine {
       color, colorRange, palette, speedRange: def.range,
       grid: { nx: g.nx, ny: g.ny, lonMin: g.lonMin, latMin: g.latMin, step: g.step },
     };
-    this.trails.setPalette(this.state?.visualMode === 'smoke' ? LAYER_BY_ID.temp2m.palette : palette);
+    this.trails.setPalette(palette);
   }
 
   private screenWind = (x: number, y: number): TrailSample | null => {
@@ -603,21 +645,9 @@ export class GlobeEngine {
     const el = Math.hypot(ex, ey) || 1, nl = Math.hypot(nx, ny) || 1;
     ex /= el; ey /= el; nx /= nl; ny /= nl;
     const z = Math.max(0, Math.min(1, (this.fullDistance - this.distance) / Math.max(0.01, this.fullDistance - this.minDistance)));
-    const scale = (this.state?.visualMode === 'smoke' ? 5.0 : 3.3) + z * 3.2;
+    const scale = 3.3 + z * 3.2;
     const vx = (w.u * ex + w.v * nx) * scale;
     const vy = (w.u * ey + w.v * ny) * scale;
-    if (this.state?.visualMode === 'smoke') {
-      const tIdx = Math.round(this.frame);
-      const temp = this.data.sample('temperature_2m', tIdx, hit.lon, hit.lat);
-      const pres = this.data.sample('pressure_msl', tIdx, hit.lon, hit.lat);
-      const color = Number.isFinite(temp)
-        ? Math.round(Math.max(0, Math.min(1, (temp + 45) / 95)) * 13)
-        : 6;
-      const density = Number.isFinite(pres)
-        ? Math.max(0.12, Math.min(1, (pres - 975) / 55))
-        : 0.5;
-      return { vx, vy, speed: w.speed, color, density };
-    }
     const cv = sampleGrid(this.flow.color, hit.lon, hit.lat, this.flow.grid);
     const t = Math.max(0, Math.min(1, (cv - this.flow.colorRange[0]) / Math.max(1e-6, this.flow.colorRange[1] - this.flow.colorRange[0])));
     return { vx, vy, speed: w.speed, color: Math.round(t * 13) };
@@ -980,9 +1010,11 @@ export class GlobeEngine {
     const host: OverlayHost = {
       width: this.width, height: this.height, dpr: this.dpr,
       distance: this.distance, fullDistance: this.fullDistance,
-      labels: this.state.labels, barbs: this.state.barbs, grid: this.state.grid,
+      labels: this.state.labels,
+      barbs: this.state.visualMode === 'earth' ? false : this.state.barbs,
+      grid: this.state.visualMode === 'earth' ? false : this.state.grid,
       home: this.state.home, probe: this.probeScreen, time: performance.now() / 1000,
-      pressure: pressure ? (() => { const g = this.data.gridFor('pressure_msl'); return { data: pressure, nx: g.nx, ny: g.ny, lonMin: g.lonMin, latMin: g.latMin, step: g.step }; })() : null,
+      pressure: this.state.visualMode === 'earth' ? null : pressure ? (() => { const g = this.data.gridFor('pressure_msl'); return { data: pressure, nx: g.nx, ny: g.ny, lonMin: g.lonMin, latMin: g.latMin, step: g.step }; })() : null,
       windPalette: LAYER_BY_ID.wind10.palette,
       sampleWind: (lat, lon) => this.sampleWind(lat, lon),
       project: this.project,
@@ -1002,7 +1034,10 @@ export class GlobeEngine {
     if (this.frameDirty) this.refreshData();
 
     this.maybeResumeTrails(now);
-    if (!this.trailsPaused && !this.rangeLoading) this.trails.update(dt);
+    if (this.state?.visualMode === 'earth' && this.data) {
+      this.clouds.update(this.data, this.frame, now / 1000);
+    }
+    if (!this.trailsPaused && !this.rangeLoading && this.state?.visualMode !== 'earth') this.trails.update(dt);
 
     if (now - this.overlayAt > 70 || this.lastOverlayVersion !== this.camVersion) {
       this.overlayAt = now;
@@ -1027,6 +1062,7 @@ export class GlobeEngine {
     this.detach();
     this.overlay.destroy();
     this.trails.destroy();
+    this.clouds.dispose();
     for (const p of this.passes.values()) p.dispose(this.fullScene);
     this.passes.clear();
     this.fullScene.traverse((o) => {

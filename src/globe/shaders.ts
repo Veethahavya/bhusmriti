@@ -77,6 +77,8 @@ float dayFactor(vec3 n) {
 
 export const GLOBE_FRAG = COMMON + /* glsl */ `
 uniform sampler2D uBase;
+uniform sampler2D uEarth;
+uniform float uEarthMode;
 uniform sampler2D uMask;
 uniform float uReady;
 
@@ -87,10 +89,11 @@ void main() {
 
   vec3 n = normalize(p);
   vec2 uv = sphereUv(p);
-  vec3 base = texture(uBase, uv).rgb;
+  vec3 base = uEarthMode > 0.5 ? texture(uEarth, uv).rgb : texture(uBase, uv).rgb;
   float land = texture(uMask, uv).r;
 
-  vec3 col = base * dayFactor(n);
+  float sunFace = smoothstep(-0.25, 0.35, dot(n, uSunDir));
+  vec3 col = uEarthMode > 0.5 ? base * 1.02 : base * dayFactor(n);
 
   vec3 viewDir = -rd;
   vec3 h = normalize(uSunDir + viewDir);
@@ -297,5 +300,87 @@ void main() {
   if (r > 0.5) discard;
   float a = smoothstep(0.5, 0.0, r) * vAlpha;
   gl_FragColor = vec4(vColor * 1.35, a);
+}
+`;
+
+export const CLOUD_FRAG = COMMON + /* glsl */ `
+precision highp sampler3D;
+uniform sampler2D uFieldsA;
+uniform sampler2D uFieldsB;
+uniform sampler3D uNoise;
+uniform float uNoiseScale;
+uniform float uCloudTime;
+uniform int uSteps;
+
+const float R_IN = 1.0015;
+const float R_OUT = 1.020;
+
+bool hitShell(vec3 ro, vec3 rd, float r, out float t) {
+  float b = dot(ro, rd);
+  float c = dot(ro, ro) - r * r;
+  float h = b * b - c;
+  if (h < 0.0) { t = -1.0; return false; }
+  t = -b - sqrt(h);
+  return t > 0.0;
+}
+
+void main() {
+  vec3 rd = rayDir();
+  float tIn, tOut, tEarth;
+  if (!hitShell(uCamPos, rd, R_OUT, tIn)) discard;
+  float b = dot(uCamPos, rd);
+  float c = dot(uCamPos, uCamPos) - R_OUT * R_OUT;
+  tOut = -b + sqrt(max(0.0, b * b - c));
+  bool earth = hitShell(uCamPos, rd, R_IN, tEarth);
+  float tEnd = earth ? min(tEarth, tOut) : tOut;
+  float start = max(tIn, 0.0);
+  if (tEnd <= start) discard;
+
+  float stepLen = (tEnd - start) / float(uSteps);
+  float trans = 1.0;
+  vec3 acc = vec3(0.0);
+
+  for (int i = 0; i < 10; i++) {
+    if (i >= uSteps) break;
+    vec3 p = uCamPos + rd * (start + (float(i) + 0.5) * stepLen);
+    float hgt = (length(p) - R_IN) / (R_OUT - R_IN);
+    vec2 uv = sphereUv(normalize(p));
+    vec4 A = texture(uFieldsA, uv);
+    vec4 B = texture(uFieldsB, uv);
+    float windU = (B.b - 0.5) * 2.0;
+    float windV = (B.a - 0.5) * 2.0;
+
+    vec3 np = p * uNoiseScale + vec3(windU * uCloudTime * 0.16, windV * uCloudTime * 0.16, 0.0);
+    float n = texture(uNoise, np).r * 0.56
+            + texture(uNoise, np * 2.13 + vec3(13.1)).r * 0.29
+            + texture(uNoise, np * 4.37 + vec3(7.7)).r * 0.15;
+
+    float cover = A.r;
+    float core = smoothstep(0.42, 0.72, n + cover * 0.20);
+    float dens = smoothstep(0.06, 0.24, cover) * (0.10 + 0.90 * core)
+               * smoothstep(0.0, 0.18, hgt) * smoothstep(1.0, 0.58, hgt);
+    if (dens > 0.002) {
+      float alpha = (1.0 - exp(-dens * stepLen * 100.0)) * 0.86;
+      float hue = A.a;
+      vec3 thermal = mix(vec3(0.58, 0.76, 1.0), vec3(1.0, 0.74, 0.54), hue);
+      vec3 col = mix(vec3(0.93, 0.95, 1.0), thermal, 0.24);
+      col = mix(col, vec3(0.32, 0.52, 0.96), smoothstep(0.02, 0.55, A.g) * 0.40);
+      col = mix(col, vec3(1.0, 0.44, 0.33), smoothstep(0.12, 0.80, A.b) * 0.34);
+      col = mix(col, vec3(0.45, 0.66, 0.98), smoothstep(0.22, 0.88, B.g) * 0.22);
+
+      vec3 nrm = normalize(p);
+      float sun = max(dot(nrm, uSunDir), 0.0);
+      float phase = pow(max(dot(rd, uSunDir), 0.0), 5.0);
+      col *= 0.82 + 0.26 * sun;
+      col += vec3(1.0) * phase * 0.34;
+
+      acc += col * alpha * trans;
+      trans *= (1.0 - alpha);
+      if (trans < 0.02) break;
+    }
+  }
+  if (trans > 0.998) discard;
+  float alphaOut = 1.0 - trans;
+  fragColor = vec4(acc / max(alphaOut, 1e-3), alphaOut);
 }
 `;

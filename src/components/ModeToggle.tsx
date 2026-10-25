@@ -5,8 +5,8 @@ export function ModeToggle() {
   const setMode = useAtmos((s) => s.setVisualMode);
   return (
     <div className="mode-toggle" role="group" aria-label="Visual mode">
-      <button className={mode === 'atlas' ? 'on' : ''} onClick={() => setMode('atlas')} title="Conventional atlas notation">ATLAS</button>
-      <button className={mode === 'smoke' ? 'on' : ''} onClick={() => setMode('smoke')} title="Realistic wind smoke">SMOKE</button>
+      <button className={mode === 'globe' ? 'on' : ''} onClick={() => setMode('globe')} title="Conventional globe notation">GLOBE</button>
+      <button className={mode === 'earth' ? 'on' : ''} onClick={() => setMode('earth')} title="Satellite Earth with volumetric clouds">EARTH</button>
     </div>
   );
 }

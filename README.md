@@ -96,9 +96,13 @@ A cron alternative to the server:
 
 ### Two visual languages
 
-**ATLAS** is the conventional notation — one colour wash, contour lines, vectors and barbs. **SMOKE** is the realistic mode: soft wind-driven puffs coloured by surface temperature, made denser by high mean-sea-level pressure, and moved by the active wind level. Toggle it in the top bar or from the FIELDS quick row.
+**GLOBE** is the conventional notation — one colour wash, contour lines, vectors and barbs. **EARTH** is the satellite mode: the NASA Blue Marble / Solar System Scope 8K imagery with a raymarched volumetric cloud shell. Cloud density follows the model cloud cover, the clouds drift with the 10 m wind, and their colour blends column moisture, CAPE and surface temperature. Toggle it in the top bar or from the FIELDS quick row.
 
-![Smoke view](docs/aeros-smoke.png)
+![Satellite Earth with flux clouds](docs/aeros-earth.png)
+
+The cloud shell is built entirely in the existing WebGL2 engine: a 2° texture packs cloud cover, precipitation, CAPE, temperature, RH, precipitable water and wind into two RGBA maps; a 64³ tiling 3D noise texture is raymarched through a thin spherical shell in 8 steps (5 on mobile). The satellite base is loaded lazily at 8K, with a 2K fallback for smaller GPUs. No new framework or runtime dependency was added.
+
+The FOSS survey for this mode: [CesiumJS CloudCollection](https://cesium.com/learn/cesiumjs/ref-doc/CloudCollection.html) (Apache 2.0) for the billboard-cloud model, [Eanpa-Sky](https://github.com/SkyeShark/Eanpa-Sky) and [three-volumetric-clouds](https://github.com/FarazzShaikh/three-volumetric-clouds) for volumetric-cloud shader patterns, [NASA GIBS/Worldview](https://earthdata.nasa.gov/) for open satellite imagery, and the NASA Blue Marble / Solar System Scope day map for the base texture.
 
 Notation is locked to keep it legible: one colour wash and one flow at a time. When a type is already occupied, its button is faded and struck through; you cannot accidentally create two fills or two flow layers. **LINES** is contour-only — constant zero regions no longer flood whole countries. CAPE and snow are clean isopleths now.
 
@@ -147,6 +151,7 @@ The control room is almost full-screen: appearance (text and interface size, hig
 | Atmosphere (wind, temp, RH, dew point, MSLP, CAPE, PW) | **NOAA GFS**, re-gridded by [earth.nullschool.net](https://earth.nullschool.net/) (EPak) | 1° | 25 hourly |
 | Land & hydrology (skin/SST, cloud, soil, ET₀, VPD, snow, radiation, ω, Z500, gusts, precipitation) | [Open-Meteo historical forecast API](https://open-meteo.com/) | 7.5° → 2° | 25 hourly |
 | Basemap | [Natural Earth](https://www.naturalearthdata.com/) 50m land/coast/lakes, 110m borders | vector | — |
+| Satellite Earth | NASA Blue Marble 2K (public domain) · [Solar System Scope](https://www.solarsystemscope.com/textures/) 8K day map (CC BY 4.0) | 2K / 8K equirectangular | — |
 | Time ranges | 24 h / 7 days / 30 days / long archive / custom | 1° hourly · 2° 3-hourly · 3° 12-hourly · 3° daily | 25 / 57 / 61 / 148 |
 
 The snapshots are packed as per-field int16 with per-field grids and loaded on demand by range. The default 24 h range is 360 × 181 at 1° for the atmosphere and 180 × 91 at 2° for land (≈68 MB, 25 hourly frames). The 7-day range is 2° and 3-hourly (57 frames, ≈61 MB); the 30-day range is 3° and 12-hourly (61 frames, ≈29 MB); the long atmosphere archive is 3° daily (148 frames, ≈37 MB). The app decodes a field lazily on first use, caches a range in memory after its first load, and never reloads the page to switch ranges.
@@ -165,6 +170,7 @@ Range switches are blocking: a small non-dismissable loading card blurs and paus
 - **Wind trails** — screen-space particles advected by the flow field and painted into a persistent 2D canvas that is faded with `destination-out` every frame. That gives smooth, curved comet tails that fade naturally instead of straight polyline chords. The same wind field feeds the barbs and the hover probe.
 - **Basemap baked once** from Natural Earth into a 1536 × 768 canvas: land fill, bathymetric grain, coastline bloom, borders, graticule. A vector coastline pass sits above the data for crisp edges at zoom.
 - **Overlay canvas** for city labels, home marker, wind barbs, H/L centres and the probe crosshair.
+- **Earth mode clouds** — a separate full-screen raymarch pass over the satellite globe: 2° flux fields, a 64³ tiling 3D noise texture, 8 shell samples (5 mobile), sun/scattering shading and a moisture/CAPE/temperature tint. FILL/LINES/FLOW layers and wind trails are suppressed in this mode; the satellite and clouds carry the story.
 - **Derived fields** computed on the native grid and cached per frame: advection (wind × gradient), divergence, pressure tendency, dew-point depression.
 - **Snapshot** — per-field int16 + offset/scale, lazy decode, IndexedDB not needed.
 
@@ -189,10 +195,12 @@ The result is a render loop that is a handful of full-screen passes plus one 2D 
 - **Cameron Beccario / earth.nullschool.net** — GFS re-gridding and the EPak format.
 - **Open-Meteo** — historical forecast API for land and hydrology.
 - **Natural Earth** — basemap vectors.
+- **NASA Blue Marble / Solar System Scope** — satellite Earth imagery (2K public-domain fallback / 8K CC BY 4.0).
+- **CesiumJS, Eanpa-Sky, three-volumetric-clouds** — open-source references for the cloud model and shader.
 - **Three.js**, **React**, **Vite**, **Space Grotesk**, **JetBrains Mono**.
 
 ## License
 
-The application code is released under the **MIT License** (see `LICENSE`). Data and basemap assets retain their own licenses: GFS is public domain, Natural Earth is public domain, Open-Meteo data is CC BY 4.0, and the Nullschool regridding is credited above. The app is intended for personal, non-commercial use.
+The application code is released under the **MIT License** (see `LICENSE`). Data and basemap assets retain their own licenses: GFS is public domain, Natural Earth is public domain, Open-Meteo data is CC BY 4.0, the 8K Solar System Scope day map is CC BY 4.0, and the Nullschool regridding is credited above. The app is intended for personal, non-commercial use.
 
 Built as a morning instrument.

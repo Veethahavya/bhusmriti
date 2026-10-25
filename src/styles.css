@@ -747,16 +747,15 @@ html[data-contrast="high"] .ramp-ticks, html[data-contrast="high"] .layer-sub { 
 .mode-toggle button { height: 22px; padding: 0 8px; border-radius: 999px; font-family: var(--mono); font-size: 5.8px; letter-spacing: 0.1em; color: var(--faint); }
 .mode-toggle button:hover { color: var(--ink); }
 .mode-toggle button.on { color: #041014; background: var(--accent); }
-.smoke-note { margin: 0 13px 8px; padding: 7px 8px; border: 1px solid rgba(94,234,212,0.2); border-radius: 6px; background: rgba(94,234,212,0.05); font-family: var(--mono); font-size: 5.8px; line-height: 1.6; color: var(--faint); }
-.smoke-note b { display: block; color: var(--accent); font-weight: 400; letter-spacing: 0.1em; }
-.smoke-legend .smoke-ramps { display: flex; flex-direction: column; gap: 7px; margin: 10px 0; }
-.smoke-ramps div { display: flex; flex-direction: column; gap: 3px; }
-.smoke-ramps span { font-family: var(--mono); font-size: 5.5px; letter-spacing: 0.12em; color: var(--faint); }
-.smoke-ramps i { display: block; height: 7px; border-radius: 3px; }
-.smoke-ramps .pressure-ramp { background: linear-gradient(90deg, rgba(150,215,235,0.06), rgba(180,235,255,0.9)); }
-.smoke-key { display: flex; gap: 10px; margin-top: 10px; font-family: var(--mono); font-size: 5.5px; color: var(--faint); }
-.smoke-key span { display: flex; align-items: center; gap: 4px; }
-.smoke-key i { width: 10px; height: 4px; border-radius: 2px; display: inline-block; }
+.earth-note { margin: 0 13px 8px; padding: 7px 8px; border: 1px solid rgba(94,234,212,0.2); border-radius: 6px; background: rgba(94,234,212,0.05); font-family: var(--mono); font-size: 5.8px; line-height: 1.6; color: var(--faint); }
+.earth-note b { display: block; color: var(--accent); font-weight: 400; letter-spacing: 0.1em; }
+.earth-keys { display: flex; flex-wrap: wrap; gap: 8px 12px; margin: 12px 0; font-family: var(--mono); font-size: 5.6px; letter-spacing: 0.08em; color: var(--faint); }
+.earth-keys span { display: flex; align-items: center; gap: 4px; }
+.earth-keys i { width: 10px; height: 5px; border-radius: 2px; display: inline-block; }
+.earth-keys .k-rain { background: #3e7bdc; }
+.earth-keys .k-conv { background: #ff6a55; }
+.earth-keys .k-warm { background: #f2b58f; }
+.earth-keys .k-cold { background: #9fc7ff; }
 @media (max-width: 760px) {
   .mode-toggle { display: none; }
 }

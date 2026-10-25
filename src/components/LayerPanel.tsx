@@ -54,8 +54,8 @@ export function LayerPanel() {
         >
           <span className="qdot" /> WIND BARBS
         </button>
-        <button className={`quick ${visualMode === 'smoke' ? 'on' : ''}`} onClick={() => setVisualMode(visualMode === 'smoke' ? 'atlas' : 'smoke')} title="Toggle realistic wind-smoke view">
-          <span className="qdot" /> SMOKE
+        <button className={`quick ${visualMode === 'earth' ? 'on' : ''}`} onClick={() => setVisualMode(visualMode === 'earth' ? 'globe' : 'earth')} title="Toggle satellite Earth view">
+          <span className="qdot" /> EARTH
         </button>
         <button className="quick ghost" onClick={clearOverlays}>CLEAR</button>
       </div>
@@ -66,10 +66,10 @@ export function LayerPanel() {
         </button>
       )}
 
-      {visualMode === 'smoke' && (
-        <div className="smoke-note">
-          <b>SMOKE VIEW</b>
-          Colour = temperature · density = pressure · motion = active wind level. Fill/line fields are suppressed.
+      {visualMode === 'earth' && (
+        <div className="earth-note">
+          <b>EARTH VIEW</b>
+          Satellite imagery with volumetric flux clouds. Density follows cloud cover; drift follows 10 m wind; colour blends moisture, CAPE and temperature. Atlas layers are hidden.
         </div>
       )}
 
@@ -97,16 +97,16 @@ export function LayerPanel() {
                 const isFlow = flow === l.id;
                 const active = isFill || isLine || isFlow;
                 const flowBlocked = l.kind === 'flow' && !!flow && flow !== l.id;
-                const smokeBlocked = visualMode === 'smoke' && l.kind !== 'flow';
-                const ok = available(l) && !flowBlocked && !smokeBlocked;
+                const earthBlocked = visualMode === 'earth';
+                const ok = available(l) && !flowBlocked && !earthBlocked;
                 const fillBusy = !!fill && fill !== l.id;
                 return (
-                  <div key={l.id} className={`layer-item ${active ? 'active' : ''} ${selected === l.id ? 'selected' : ''} ${available(l) ? '' : 'unavailable'} ${flowBlocked || smokeBlocked ? 'blocked' : ''}`}>
+                  <div key={l.id} className={`layer-item ${active ? 'active' : ''} ${selected === l.id ? 'selected' : ''} ${available(l) ? '' : 'unavailable'} ${flowBlocked || earthBlocked ? 'blocked' : ''}`}>
                     <button
                       className="layer-main"
                       onClick={() => { if (!ok) return; toggleLayer(l.id); setSelected(l.id); }}
                       disabled={!ok}
-                      title={flowBlocked ? `${l.label} — remove the active flow layer first` : smokeBlocked ? `${l.label} — switch to ATLAS to edit this layer` : available(l) ? `${l.label} — ${l.description}` : `${l.label} — not in the long atmosphere archive`}
+                      title={flowBlocked ? `${l.label} — remove the active flow layer first` : earthBlocked ? `${l.label} — switch to GLOBE to edit this layer` : available(l) ? `${l.label} — ${l.description}` : `${l.label} — not in the long atmosphere archive`}
                     >
                       <span className="layer-ic"><Icon name={l.glyph} size={15} /></span>
                       <span className="layer-txt">
