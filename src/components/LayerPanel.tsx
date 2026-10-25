@@ -19,7 +19,6 @@ export function LayerPanel() {
   const setParticles = useAtmos((s) => s.setParticles);
   const setBarbs = useAtmos((s) => s.setBarbs);
   const setVarInfo = useAtmos((s) => s.setVarInfo);
-  const visualMode = useAtmos((s) => s.visualMode);
   const [closed, setClosed] = useState<Record<string, boolean>>({});
   const data = useAtmos((s) => s.data);
   const DERIVED = new Set(['adv_temp', 'adv_moist', 'div10', 'ptend3', 'dtd']);
@@ -62,12 +61,7 @@ export function LayerPanel() {
         </button>
       )}
 
-      {visualMode === 'earth' && (
-        <div className="earth-note">
-          <b>EARTH VIEW</b>
-          Satellite imagery with wind-gust smoke arrows and translucent temperature-shaded ocean water. Atlas layers are hidden.
-        </div>
-      )}
+
 
       {data?.manifest.atmosphereOnly && (
         <div className="archive-note">
@@ -93,16 +87,15 @@ export function LayerPanel() {
                 const isFlow = flow === l.id;
                 const active = isFill || isLine || isFlow;
                 const flowBlocked = l.kind === 'flow' && !!flow && flow !== l.id;
-                const earthBlocked = visualMode === 'earth';
-                const ok = available(l) && !flowBlocked && !earthBlocked;
+                const ok = available(l) && !flowBlocked;
                 const fillBusy = !!fill && fill !== l.id;
                 return (
-                  <div key={l.id} className={`layer-item ${active ? 'active' : ''} ${selected === l.id ? 'selected' : ''} ${available(l) ? '' : 'unavailable'} ${flowBlocked || earthBlocked ? 'blocked' : ''}`}>
+                  <div key={l.id} className={`layer-item ${active ? 'active' : ''} ${selected === l.id ? 'selected' : ''} ${available(l) ? '' : 'unavailable'} ${flowBlocked ? 'blocked' : ''}`}>
                     <button
                       className="layer-main"
                       onClick={() => { if (!ok) return; toggleLayer(l.id); setSelected(l.id); }}
                       disabled={!ok}
-                      title={flowBlocked ? `${l.label} — remove the active flow layer first` : earthBlocked ? `${l.label} — switch to GLOBE to edit this layer` : available(l) ? `${l.label} — ${l.description}` : `${l.label} — not in the long atmosphere archive`}
+                      title={flowBlocked ? `${l.label} — remove the active flow layer first` : available(l) ? `${l.label} — ${l.description}` : `${l.label} — not in the long atmosphere archive`}
                     >
                       <span className="layer-ic"><Icon name={l.glyph} size={15} /></span>
                       <span className="layer-txt">

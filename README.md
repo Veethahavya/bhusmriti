@@ -94,24 +94,6 @@ A cron alternative to the server:
 
 ![Morning briefing](docs/aeros-briefing.png)
 
-### Open items
-
-See **[OPEN_ITEMS.md](OPEN_ITEMS.md)**. The EARTH wind-gust smoke and ocean-water animation are explicitly an open item; they are placeholders and need a dedicated motion/realism pass.
-
-### Two visual languages
-
-**GLOBE** is the conventional notation — one colour wash, contour lines, vectors and barbs. **EARTH** is the satellite mode: 8K satellite imagery, a field of wind-gust arrows that trail exaggerated animated smoke, and a translucent ocean whose water colour is sea-surface temperature. The arrows are coloured by wind speed; the ocean current drives the water motion. Toggle it in the top bar.
-
-![Satellite Earth with wind gusts and ocean currents](docs/aeros-earth.png)
-
-The gust field is a canvas layer over the WebGL globe: arrows sample the active flow on a coarse grid, their tails are tapered, gradient-filled, wobbling smoke strokes with drifting puffs, and they freeze with the timeline when paused. The ocean water is a full-screen WebGL pass over the ocean mask; it samples the new 2° `ocean_current_velocity` / `ocean_current_direction` fields plus SST, tints the water by temperature, and advects the surface ripples with the current. Both are driven by the timeline frame, not wall-clock, so paused means paused. The previous volumetric-cloud deck is retired from EARTH so the satellite, wind and water are visible.
-
-![Ocean surface current flow](docs/aeros-ocean-flow.png)
-
-The new **Ocean surface current** layer also appears under **Circulation** in GLOBE and can be selected as the flow layer; its streamlines then advect with the surface current. Ocean current data comes from the [Open-Meteo Marine API](https://open-meteo.com/en/docs/marine-weather-api) (separate quota from the land hydrology) and is available in the 24 h, 7 d and 30 d ranges. The long atmosphere archive has no ocean-current field.
-
-FOSS survey for this mode: [CesiumJS CloudCollection](https://cesium.com/learn/cesiumjs/ref-doc/CloudCollection.html), [Eanpa-Sky](https://github.com/SkyeShark/Eanpa-Sky), [three-volumetric-clouds](https://github.com/FarazzShaikh/three-volumetric-clouds), [NASA GIBS/Worldview](https://earthdata.nasa.gov/), and the [Solar System Scope](https://www.solarsystemscope.com/textures/) 8K day map (CC BY 4.0; NASA Blue Marble 2K fallback).
-
 Notation is locked to keep it legible: one colour wash and one flow at a time. When a type is already occupied, its button is faded and struck through; you cannot accidentally create two fills or two flow layers. **LINES** is contour-only — constant zero regions no longer flood whole countries. CAPE and snow are clean isopleths now.
 
 ![CAPE lines only](docs/aeros-cape-line.png)
@@ -159,9 +141,6 @@ The control room is almost full-screen: appearance (text and interface size, hig
 | Atmosphere (wind, temp, RH, dew point, MSLP, CAPE, PW) | **NOAA GFS**, re-gridded by [earth.nullschool.net](https://earth.nullschool.net/) (EPak) | 1° | 25 hourly |
 | Land & hydrology (skin/SST, cloud, soil, ET₀, VPD, snow, radiation, ω, Z500, gusts, precipitation) | [Open-Meteo historical forecast API](https://open-meteo.com/) | 7.5° → 2° | 25 hourly |
 | Basemap | [Natural Earth](https://www.naturalearthdata.com/) 50m land/coast/lakes, 110m borders | vector | — |
-| Satellite Earth | NASA Blue Marble 2K (public domain) · [Solar System Scope](https://www.solarsystemscope.com/textures/) 8K day map (CC BY 4.0) | 2K / 8K equirectangular | — |
-| Ocean surface currents | [Open-Meteo Marine API](https://open-meteo.com/en/docs/marine-weather-api) `ocean_current_velocity`, `ocean_current_direction` | 7.5° sample → 2°/3° | 31 days |
-| Ocean surface currents | [Open-Meteo Marine API](https://open-meteo.com/en/docs/marine-weather-api) `ocean_current_velocity`, `ocean_current_direction` at 7.5° sample points | 2° / 3° upsampled | 31 days |
 | Time ranges | 24 h / 7 days / 30 days / long archive / custom | 1° hourly · 2° 3-hourly · 3° 12-hourly · 3° daily | 25 / 57 / 61 / 148 |
 
 The snapshots are packed as per-field int16 with per-field grids and loaded on demand by range. The default 24 h range is 360 × 181 at 1° for the atmosphere and 180 × 91 at 2° for land (≈68 MB, 25 hourly frames). The 7-day range is 2° and 3-hourly (57 frames, ≈61 MB); the 30-day range is 3° and 12-hourly (61 frames, ≈29 MB); the long atmosphere archive is 3° daily (148 frames, ≈37 MB). The app decodes a field lazily on first use, caches a range in memory after its first load, and never reloads the page to switch ranges.
@@ -180,7 +159,6 @@ Range switches are blocking: a small non-dismissable loading card blurs and paus
 - **Wind trails** — screen-space particles advected by the flow field and painted into a persistent 2D canvas that is faded with `destination-out` every frame. That gives smooth, curved comet tails that fade naturally instead of straight polyline chords. The same wind field feeds the barbs and the hover probe.
 - **Basemap baked once** from Natural Earth into a 1536 × 768 canvas: land fill, bathymetric grain, coastline bloom, borders, graticule. A vector coastline pass sits above the data for crisp edges at zoom.
 - **Overlay canvas** for city labels, home marker, wind barbs, H/L centres and the probe crosshair.
-- **Earth mode** — 8K satellite base, canvas wind-gust arrows with animated smoke tails (colour by speed), and a full-screen ocean-water pass sampling SST + surface current. FILL/LINES/FLOW controls are suppressed; the satellite, wind and water carry the story. The ocean current is also a normal flow layer in GLOBE.
 - **Derived fields** computed on the native grid and cached per frame: advection (wind × gradient), divergence, pressure tendency, dew-point depression.
 - **Snapshot** — per-field int16 + offset/scale, lazy decode, IndexedDB not needed.
 
@@ -205,12 +183,10 @@ The result is a render loop that is a handful of full-screen passes plus one 2D 
 - **Cameron Beccario / earth.nullschool.net** — GFS re-gridding and the EPak format.
 - **Open-Meteo** — historical forecast API for land and hydrology.
 - **Natural Earth** — basemap vectors.
-- **NASA Blue Marble / Solar System Scope** — satellite Earth imagery (2K public-domain fallback / 8K CC BY 4.0).
-- **CesiumJS, Eanpa-Sky, three-volumetric-clouds** — open-source references for the cloud model and shader.
 - **Three.js**, **React**, **Vite**, **Space Grotesk**, **JetBrains Mono**.
 
 ## License
 
-The application code is released under the **MIT License** (see `LICENSE`). Data and basemap assets retain their own licenses: GFS is public domain, Natural Earth is public domain, Open-Meteo data is CC BY 4.0, the 8K Solar System Scope day map is CC BY 4.0, and the Nullschool regridding is credited above. The app is intended for personal, non-commercial use.
+The application code is released under the **MIT License** (see `LICENSE`). Data and basemap assets retain their own licenses: GFS is public domain, Natural Earth is public domain, Open-Meteo data is CC BY 4.0, and the Nullschool regridding is credited above. The app is intended for personal, non-commercial use.
 
 Built as a morning instrument.

@@ -77,8 +77,6 @@ float dayFactor(vec3 n) {
 
 export const GLOBE_FRAG = COMMON + /* glsl */ `
 uniform sampler2D uBase;
-uniform sampler2D uEarth;
-uniform float uEarthMode;
 uniform sampler2D uMask;
 uniform float uReady;
 
@@ -89,11 +87,11 @@ void main() {
 
   vec3 n = normalize(p);
   vec2 uv = sphereUv(p);
-  vec3 base = uEarthMode > 0.5 ? texture(uEarth, uv).rgb : texture(uBase, uv).rgb;
+  vec3 base = texture(uBase, uv).rgb;
   float land = texture(uMask, uv).r;
 
   float sunFace = smoothstep(-0.25, 0.35, dot(n, uSunDir));
-  vec3 col = uEarthMode > 0.5 ? base * 1.02 : base * dayFactor(n);
+  vec3 col = base * dayFactor(n);
 
   vec3 viewDir = -rd;
   vec3 h = normalize(uSunDir + viewDir);
@@ -300,56 +298,5 @@ void main() {
   if (r > 0.5) discard;
   float a = smoothstep(0.5, 0.0, r) * vAlpha;
   gl_FragColor = vec4(vColor * 1.35, a);
-}
-`;
-
-export const WATER_FRAG = COMMON + /* glsl */ `
-uniform sampler2D uMask;
-uniform sampler2D uWater;
-uniform float uWaterTime;
-
-void main() {
-  vec3 rd = rayDir();
-  vec3 p;
-  float t;
-  if (!hitSphere(uCamPos, rd, p, t)) discard;
-  vec2 uv = sphereUv(p);
-  float land = texture(uMask, uv).r;
-  if (land > 0.5) discard;
-
-  vec4 W = texture(uWater, uv);
-  float sst = W.r * 34.0 - 2.0;
-  float spd = W.g * 12.0;
-  vec2 cur = (W.ba - 0.5) * 24.0;
-  if (spd < 0.02 && sst < -1.0) discard;
-
-  vec3 n = normalize(p);
-  float sun = max(dot(n, uSunDir), 0.0);
-  vec2 q = uv * vec2(46.0, 23.0) + cur * uWaterTime * 0.55;
-  float n1 = fbm(q);
-  float n2 = fbm(q * 2.7 + 7.7);
-
-  float warm = clamp((sst - 4.0) / 28.0, 0.0, 1.0);
-  vec3 cold = vec3(0.01, 0.055, 0.16);
-  vec3 mid = vec3(0.015, 0.20, 0.34);
-  vec3 turq = vec3(0.05, 0.52, 0.56);
-  vec3 hot = vec3(0.72, 0.66, 0.39);
-  vec3 col = mix(cold, mid, smoothstep(0.0, 0.5, warm));
-  col = mix(col, turq, smoothstep(0.42, 0.82, warm));
-  col = mix(col, hot, smoothstep(0.82, 1.0, warm));
-
-  float streak = smoothstep(0.46, 0.82, n1) * smoothstep(0.4, 5.0, spd);
-  col += vec3(0.22, 0.62, 0.68) * streak * 0.55;
-  col += vec3(0.05, 0.16, 0.14) * smoothstep(0.5, 0.9, n2) * 0.35;
-
-  vec3 v = normalize(uCamPos - p);
-  vec3 h = normalize(uSunDir + v);
-  float spec = pow(max(dot(n, h), 0.0), 55.0);
-  col += vec3(1.0, 0.88, 0.68) * spec * (0.35 + 0.65 * sun);
-
-  col *= 0.62 + 0.48 * sun;
-  float fres = pow(1.0 - max(dot(n, v), 0.0), 3.0);
-  float alpha = 0.28 + 0.14 * smoothstep(0.0, 7.0, spd) + 0.12 * fres + 0.06 * smoothstep(0.5, 0.9, n2);
-  fragColor = vec4(col, clamp(alpha, 0.0, 0.62));
 }
 `;

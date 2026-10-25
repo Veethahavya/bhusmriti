@@ -11,7 +11,6 @@ import {
 export type Panel = 'layers' | 'briefing' | 'settings' | 'info' | null;
 export type WindUnit = 'kmh' | 'ms' | 'kt';
 export type FlowColor = 'speed' | 'temp' | 'advection';
-export type VisualMode = 'globe' | 'earth';
 
 export type Home = { lat: number; lon: number; name: string; country?: string };
 
@@ -54,7 +53,6 @@ type State = {
   opacity: Record<string, number>;
   particles: boolean;
   flowColor: FlowColor;
-  visualMode: VisualMode;
   barbs: boolean;
   labels: boolean;
   terminator: boolean;
@@ -91,7 +89,6 @@ type State = {
 
   setParticles: (v: boolean) => void;
   setFlowColor: (v: FlowColor) => void;
-  setVisualMode: (v: VisualMode) => void;
   setBarbs: (v: boolean) => void;
   setLabels: (v: boolean) => void;
   setTerminator: (v: boolean) => void;
@@ -132,7 +129,7 @@ export const useAtmos = create<State>((set, get) => ({
   rangeLoading: false, rangeProgress: 0, rangeError: null, rangeLoadingLabel: '',
   fillLayer: DEFAULT_LAYERS.fill, lineLayers: DEFAULT_LAYERS.lines, flowLayer: DEFAULT_LAYERS.flow,
   selected: DEFAULT_LAYERS.selected, opacity: defaultOpacity(),
-  particles: true, flowColor: 'speed', visualMode: 'globe', barbs: false, labels: true, terminator: true, grid: true,
+  particles: true, flowColor: 'speed', barbs: false, labels: true, terminator: true, grid: true,
   density: 1, windUnit: 'kmh',
   home: storedHome(), locateState: 'idle', panel: typeof window !== 'undefined' && window.innerWidth >= 900 ? 'layers' : null, varInfo: null, probe: null, hoverEnabled: true,
   fly: null, resetToken: 0,
@@ -338,7 +335,6 @@ export const useAtmos = create<State>((set, get) => ({
 
   setParticles: (v) => set({ particles: v }),
   setFlowColor: (v) => set({ flowColor: v }),
-  setVisualMode: (v) => set({ visualMode: v }),
   setBarbs: (v) => set({ barbs: v }),
   setLabels: (v) => set({ labels: v }),
   setTerminator: (v) => set({ terminator: v }),

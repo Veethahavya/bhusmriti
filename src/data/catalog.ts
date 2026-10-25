@@ -14,10 +14,6 @@ const P: Record<string, Palette> = {
     [0, '#4cc9c0'], [0.2, '#7ee8dc'], [0.4, '#c8fff8'], [0.6, '#ffffff'],
     [0.78, '#c7b8ff'], [0.9, '#e39cff'], [1, '#ff7ad9'],
   ],
-  current: [
-    [0, '#2a9dcc'], [0.2, '#43cfe0'], [0.4, '#6ee8d8'], [0.58, '#a8f0d6'],
-    [0.74, '#d9f4c4'], [0.88, '#f5d98c'], [1, '#ff8f5e'],
-  ],
   temp: [
     [0, '#2b1b4d'], [0.14, '#34558f'], [0.28, '#3c86a8'], [0.42, '#4fb39a'],
     [0.56, '#8cc97a'], [0.7, '#e0cf6a'], [0.84, '#e39a5c'], [1, '#b8434d'],
@@ -124,14 +120,6 @@ export const LAYERS: LayerDef[] = [
     read: 'Jet streaks and sharp curvature are where the atmosphere is being stretched and lift is generated.',
   },
 
-  {
-    id: 'ocean_current', label: 'Ocean surface current', short: 'Ocean flow', sub: 'surface · km/h', group: 'flow', kind: 'flow',
-    unit: 'km/h', decimals: 1, palette: P.current, range: [0, 8], field: 'ocean_current_velocity', dirField: 'ocean_current_direction',
-    defaultOpacity: 1, trailGain: 1.25, trailSpeed: 5.5, trailDensity: 0.55, trailFade: 0.018, trailLife: 1.8,
-    pattern: 0, glyph: 'wind',
-    description: 'The surface ocean current. In the atlas it is a flow layer; in EARTH it drives the translucent, temperature-shaded water.',
-    read: 'Western boundary currents are narrow and fast; eddies and convergence zones concentrate marine heat and nutrients.',
-  },
   {
     id: 'gusts', label: 'Wind gusts', short: 'Gusts', sub: '10 m · max gust', group: 'flow', kind: 'scalar',
     unit: 'km/h', decimals: 0, palette: P.wind, range: [0, 180], contour: 20,
