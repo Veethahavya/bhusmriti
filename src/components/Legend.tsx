@@ -183,17 +183,16 @@ export function EarthLegend() {
         <span className="legend-ic"><Icon name="wind" size={16} /></span>
         <div>
           <div className="eyebrow">SATELLITE · EARTH</div>
-          <div className="legend-title">Earth &amp; flux clouds</div>
+          <div className="legend-title">Earth winds &amp; ocean</div>
         </div>
         <div className="legend-unit">live</div>
       </div>
-      <div className="legend-sub">NASA Blue Marble · raymarched volumetric clouds</div>
-      <p className="legend-desc">A satellite view of the planet under volumetric clouds. Cloud density follows cloud cover; the clouds drift with the 10 m wind; colour blends column moisture, CAPE and surface temperature.</p>
+      <div className="legend-sub">NASA Blue Marble · wind gusts · SST water</div>
+      <p className="legend-desc">A satellite view of the planet with wind-gust arrows that dissolve into animated smoke, and a translucent ocean whose colour is sea-surface temperature. The ocean current drives the water motion; the arrows show the active flow.</p>
       <div className="earth-keys">
-        <span><i className="k-rain" /> MOISTURE</span>
-        <span><i className="k-conv" /> CONVECTION</span>
-        <span><i className="k-warm" /> WARM</span>
-        <span><i className="k-cold" /> COLD</span>
+        <span><i className="k-wind" /> WIND SPEED</span>
+        <span><i className="k-ocean" /> SEA TEMP</span>
+        <span><i className="k-cloud" /> CURRENT</span>
       </div>
       <div className="legend-meta">
         <span>IMAGERY</span><b>NASA Blue Marble</b>

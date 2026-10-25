@@ -152,6 +152,7 @@ The control room is almost full-screen: appearance (text and interface size, hig
 | Land & hydrology (skin/SST, cloud, soil, ET₀, VPD, snow, radiation, ω, Z500, gusts, precipitation) | [Open-Meteo historical forecast API](https://open-meteo.com/) | 7.5° → 2° | 25 hourly |
 | Basemap | [Natural Earth](https://www.naturalearthdata.com/) 50m land/coast/lakes, 110m borders | vector | — |
 | Satellite Earth | NASA Blue Marble 2K (public domain) · [Solar System Scope](https://www.solarsystemscope.com/textures/) 8K day map (CC BY 4.0) | 2K / 8K equirectangular | — |
+| Ocean surface currents | [Open-Meteo Marine API](https://open-meteo.com/en/docs/marine-weather-api) `ocean_current_velocity`, `ocean_current_direction` at 7.5° sample points | 2° / 3° upsampled | 31 days |
 | Time ranges | 24 h / 7 days / 30 days / long archive / custom | 1° hourly · 2° 3-hourly · 3° 12-hourly · 3° daily | 25 / 57 / 61 / 148 |
 
 The snapshots are packed as per-field int16 with per-field grids and loaded on demand by range. The default 24 h range is 360 × 181 at 1° for the atmosphere and 180 × 91 at 2° for land (≈68 MB, 25 hourly frames). The 7-day range is 2° and 3-hourly (57 frames, ≈61 MB); the 30-day range is 3° and 12-hourly (61 frames, ≈29 MB); the long atmosphere archive is 3° daily (148 frames, ≈37 MB). The app decodes a field lazily on first use, caches a range in memory after its first load, and never reloads the page to switch ranges.
@@ -170,7 +171,7 @@ Range switches are blocking: a small non-dismissable loading card blurs and paus
 - **Wind trails** — screen-space particles advected by the flow field and painted into a persistent 2D canvas that is faded with `destination-out` every frame. That gives smooth, curved comet tails that fade naturally instead of straight polyline chords. The same wind field feeds the barbs and the hover probe.
 - **Basemap baked once** from Natural Earth into a 1536 × 768 canvas: land fill, bathymetric grain, coastline bloom, borders, graticule. A vector coastline pass sits above the data for crisp edges at zoom.
 - **Overlay canvas** for city labels, home marker, wind barbs, H/L centres and the probe crosshair.
-- **Earth mode clouds** — a separate full-screen raymarch pass over the satellite globe: 2° flux fields, a 64³ tiling 3D noise texture, 10 shell samples (6 mobile), sun/scattering shading and a moisture/CAPE/temperature tint. FILL/LINES/FLOW layers and wind trails are suppressed in this mode; the satellite and clouds carry the story.
+- **Earth mode** — 8K satellite base, canvas wind-gust arrows with animated smoke tails (colour by speed), and a full-screen ocean-water pass sampling SST + surface current. FILL/LINES/FLOW controls are suppressed; the satellite, wind and water carry the story. The ocean current is also a normal flow layer in GLOBE.
 - **Derived fields** computed on the native grid and cached per frame: advection (wind × gradient), divergence, pressure tendency, dew-point depression.
 - **Snapshot** — per-field int16 + offset/scale, lazy decode, IndexedDB not needed.
 

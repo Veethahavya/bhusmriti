@@ -36,6 +36,7 @@ CACHE.mkdir(exist_ok=True)
 
 NS_BASE = 'https://gaia.nullschool.net/data/gfs'
 OM_BASE = 'https://historical-forecast-api.open-meteo.com/v1/forecast'
+MARINE_BASE = 'https://marine-api.open-meteo.com/v1/marine'
 UA = 'AEROS/1.0 (personal atmosphere atlas)'
 
 WIND_SPECS = [
@@ -217,7 +218,7 @@ def hydro_all(end):
     """Fetch 32 days of 7.5° hydrology once; return dict(var -> [time,23,48])."""
     cdir = CACHE / 'om' / f'{end:%Y%m%d%H}-31d'
     cdir.mkdir(parents=True, exist_ok=True)
-    pts = [(lo, la) for la in OM_LAT for lo in OM_LON]
+    pts = [(lo, la) for la in OM_LAT for lo in OM_LON if la > -80]
     batches = [pts[i:i + 100] for i in range(0, len(pts), 100)]
     rows = []
     for bi, batch in enumerate(batches):
@@ -294,12 +295,78 @@ def upsample_om(arr, step):
     return (top * (1 - fy) + bot * fy).astype(np.float32)
 
 
+MARINE_VARS = ['ocean_current_velocity', 'ocean_current_direction']
+
+
+def marine_all(end):
+    """Fetch 32 days of surface ocean current at the same 7.5° points."""
+    cdir = CACHE / 'marine' / f'{end:%Y%m%d%H}-31d'
+    cdir.mkdir(parents=True, exist_ok=True)
+    pts = [(lo, la) for la in OM_LAT for lo in OM_LON if la > -80]
+    batches = [pts[i:i + 100] for i in range(0, len(pts), 100)]
+    rows = []
+    for bi, batch in enumerate(batches):
+        cp = cdir / f'batch_{bi:03d}.json.gz'
+        if cp.exists():
+            with gzip.open(cp, 'rt') as f:
+                data = json.load(f)
+        else:
+            params = {
+                'latitude': ','.join(f'{p[1]:.4f}' for p in batch),
+                'longitude': ','.join(f'{p[0]:.4f}' for p in batch),
+                'hourly': ','.join(MARINE_VARS),
+                'past_days': '31',
+                'forecast_days': '1',
+                'timezone': 'GMT',
+            }
+            url = MARINE_BASE + '?' + urllib.parse.urlencode(params)
+            log(f'  marine batch {bi+1}/{len(batches)} ({len(batch)} pts)')
+            data = None
+            for attempt in range(6):
+                try:
+                    req = urllib.request.Request(url, headers={'User-Agent': UA})
+                    with urllib.request.urlopen(req, timeout=180) as r:
+                        data = json.loads(r.read())
+                    break
+                except urllib.error.HTTPError as e:
+                    log(f'    marine HTTP {e.code}')
+                    time.sleep(45 if e.code == 429 else 2 ** attempt * 4)
+                except Exception as e:  # noqa: BLE001
+                    log(f'    marine {type(e).__name__}: {e}')
+                    time.sleep(2 ** attempt * 4)
+            if data is None:
+                raise SystemExit(f'marine batch {bi} failed')
+            with gzip.open(cp, 'wt') as f:
+                json.dump(data, f)
+            time.sleep(8.0)
+        if isinstance(data, dict):
+            data = [data]
+        rows.extend(data)
+    if len(rows) != len(pts):
+        raise SystemExit(f'marine {len(rows)}/{len(pts)}')
+    times = rows[0]['hourly']['time']
+    n = len(times)
+    out = {v: np.full((n, len(OM_LAT), len(OM_LON)), np.nan, dtype=np.float32) for v in MARINE_VARS}
+    for i, row in enumerate(rows):
+        lo = row.get('longitude', 0.0); la = row.get('latitude', 0.0)
+        y = int(np.argmin(np.abs(OM_LAT - la))); x = int(np.argmin(np.abs(OM_LON - lo)))
+        h = row.get('hourly', {})
+        idx = {t: j for j, t in enumerate(h.get('time', []))}
+        for v in MARINE_VARS:
+            arr = h.get(v, [])
+            for t, j in idx.items():
+                val = arr[j] if j < len(arr) else None
+                if val is not None and 0 <= j < n:
+                    out[v][j, y, x] = val
+    return times, out
+
+
 def frames_for(end, days, step):
     n = days * 24 // step
     return [end - timedelta(hours=days * 24 - i * step) for i in range(n + 1)]
 
 
-def build_range(spec, end, hydro_times, hydro):
+def build_range(spec, end, hydro_times, hydro, marine_times, marine):
     rid = spec['id']
     if spec.get('daily_midnight'):
         d0 = (end - timedelta(days=spec['days'])).date()
@@ -322,6 +389,14 @@ def build_range(spec, end, hydro_times, hydro):
         arr = hydro[v][[hidx[t] for t in iso]]
         fields[v] = upsample_om(arr, spec['hydro_step'])
 
+    midx = {t: j for j, t in enumerate(marine_times)}
+    m_missing = [t for t in iso if t not in midx]
+    if m_missing:
+        raise SystemExit(f'marine missing {len(m_missing)} frames, e.g. {m_missing[:3]}')
+    for v in MARINE_VARS:
+        arr = marine[v][[midx[t] for t in iso]]
+        fields[v] = upsample_om(arr, spec['hydro_step'])
+
     grid = {'lonMin': -180, 'lonMax': 180, 'latMin': -90, 'latMax': 90, 'step': spec['atm_step']}
     lat_a, lon_a = grid_dims(spec['atm_step'])
     lat_h, lon_h = grid_dims(spec['hydro_step'])
@@ -337,6 +412,7 @@ def build_range(spec, end, hydro_times, hydro):
         order += [sname, dname]
     order += [s[2] for s in SCALAR_SPECS]
     order += list(OM_VARS)
+    order += MARINE_VARS
 
     build_id = datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')
     bin_name = f'snapshot-{build_id}.bin'
@@ -404,9 +480,11 @@ def main():
     end = find_latest()
     log('fetching 32-day hydrology')
     hydro_times, hydro = hydro_all(end)
+    log('fetching 32-day ocean currents')
+    marine_times, marine = marine_all(end)
     ranges = {}
     for spec in RANGES:
-        ranges[spec['id']] = build_range(spec, end, hydro_times, hydro)
+        ranges[spec['id']] = build_range(spec, end, hydro_times, hydro, marine_times, marine)
     tmp = OUT / 'ranges.json.tmp'
     tmp.write_text(json.dumps({'generated_at': end.isoformat().replace('+00:00', 'Z'), 'ranges': ranges}, indent=1))
     tmp.replace(OUT / 'ranges.json')

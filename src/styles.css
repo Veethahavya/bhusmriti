@@ -756,3 +756,8 @@ html[data-contrast="high"] .ramp-ticks, html[data-contrast="high"] .layer-sub { 
 .earth-keys .k-conv { background: #ff6a55; }
 .earth-keys .k-warm { background: #f2b58f; }
 .earth-keys .k-cold { background: #9fc7ff; }
+.aeros-gusts { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
+.aeros-overlay { z-index: 3; }
+.k-wind { background:#7ee8dc; }
+.k-ocean { background:#ff8f5e; }
+.k-cloud { background:#dbe7ee; }

@@ -10,6 +10,8 @@ import { buildBasemap } from './basemap';
 import { Overlay, type OverlayHost } from './overlay';
 import { WindTrails, type TrailSample } from './trails';
 import { CloudPass } from './clouds';
+import { GustLayer } from './gusts';
+import { WaterPass } from './water';
 import { ATMOS_FRAG, DATA_FRAG, FULLSCREEN_VERT, GLOBE_FRAG } from './shaders';
 
 const DEG = Math.PI / 180;
@@ -205,6 +207,8 @@ export class GlobeEngine {
 
   private trails: WindTrails;
   private clouds: CloudPass;
+  private gusts: GustLayer;
+  private water: WaterPass;
   private coast: THREE.LineSegments | null = null;
   private earthTex: THREE.Texture | null = null;
   private earthLoading = false;
@@ -288,6 +292,8 @@ export class GlobeEngine {
     this.trails = new WindTrails(container, this.screenWind, this.globeBounds);
     this.trails.setVisible(false);
     this.clouds = new CloudPass(this.fullScene, this.common);
+    this.water = new WaterPass(this.fullScene, this.common, this.maskU);
+    this.gusts = new GustLayer(container, this.screenWind, this.globeBounds);
 
     this.makeStars();
     this.addCoastlines();
@@ -510,7 +516,9 @@ export class GlobeEngine {
     const earth = state.visualMode === 'earth';
     if (earth) this.loadEarthTexture();
     this.globeU.uEarthMode.value = earth ? 1 : 0;
-    this.clouds.setVisible(earth);
+    this.clouds.setVisible(false);
+    this.gusts.setVisible(earth);
+    this.water.setVisible(earth && !!this.data?.has('ocean_current_velocity'));
     if (this.coast) this.coast.visible = !earth;
     if (earth) {
       this.trailsPaused = true;
@@ -629,6 +637,7 @@ export class GlobeEngine {
       grid: { nx: g.nx, ny: g.ny, lonMin: g.lonMin, latMin: g.latMin, step: g.step },
     };
     this.trails.setPalette(palette);
+    this.gusts.setPalette(palette);
   }
 
   private screenWind = (x: number, y: number): TrailSample | null => {
@@ -721,6 +730,7 @@ export class GlobeEngine {
     this.camera.updateProjectionMatrix();
     this.overlay.resize(w, h, this.dpr);
     this.trails.resize(w, h, this.dpr);
+    this.gusts.resize(w, h, this.dpr);
     const fit = (w < 600 ? 0.46 : 0.40) * Math.min(w, h);
     const focal = (h / 2) / Math.tan((this.fov * DEG) / 2);
     const theta = Math.atan(fit / focal);
@@ -1035,7 +1045,8 @@ export class GlobeEngine {
 
     this.maybeResumeTrails(now);
     if (this.state?.visualMode === 'earth' && this.data) {
-      this.clouds.update(this.data, this.frame, this.frame * 0.55);
+      this.water.update(this.data, this.frame);
+      this.gusts.update(this.frame);
     }
     if (!this.trailsPaused && !this.rangeLoading && this.state?.visualMode !== 'earth') this.trails.update(dt);
 
@@ -1063,6 +1074,8 @@ export class GlobeEngine {
     this.overlay.destroy();
     this.trails.destroy();
     this.clouds.dispose();
+    this.water.dispose();
+    this.gusts.destroy();
     for (const p of this.passes.values()) p.dispose(this.fullScene);
     this.passes.clear();
     this.fullScene.traverse((o) => {
