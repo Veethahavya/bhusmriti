@@ -94,6 +94,14 @@ A cron alternative to the server:
 
 ![Morning briefing](docs/aeros-briefing.png)
 
+### Ocean surface current
+
+**Ocean surface current** is a flow layer under **Circulation**. Select it as the flow layer and its streamlines advect with the surface current.
+
+Data comes from the [Open-Meteo Marine API](https://open-meteo.com/en/docs/marine-weather-api): `ocean_current_velocity` and `ocean_current_direction`, available in the 24 h, 7 d and 30 d ranges. The long atmosphere archive has no ocean-current field. The source is still 7.5° upsampled to the atlas grid; coastal NaNs are filled at runtime from nearest valid ocean cells and the trails are masked to water. A true 2° refetch is recorded in **[OPEN_ITEMS.md](OPEN_ITEMS.md)**.
+
+![Ocean surface current flow](docs/aeros-ocean-flow.png)
+
 Notation is locked to keep it legible: one colour wash and one flow at a time. When a type is already occupied, its button is faded and struck through; you cannot accidentally create two fills or two flow layers. **LINES** is contour-only — constant zero regions no longer flood whole countries. CAPE and snow are clean isopleths now.
 
 ![CAPE lines only](docs/aeros-cape-line.png)
@@ -141,6 +149,7 @@ The control room is almost full-screen: appearance (text and interface size, hig
 | Atmosphere (wind, temp, RH, dew point, MSLP, CAPE, PW) | **NOAA GFS**, re-gridded by [earth.nullschool.net](https://earth.nullschool.net/) (EPak) | 1° | 25 hourly |
 | Land & hydrology (skin/SST, cloud, soil, ET₀, VPD, snow, radiation, ω, Z500, gusts, precipitation) | [Open-Meteo historical forecast API](https://open-meteo.com/) | 7.5° → 2° | 25 hourly |
 | Basemap | [Natural Earth](https://www.naturalearthdata.com/) 50m land/coast/lakes, 110m borders | vector | — |
+| Ocean surface currents | [Open-Meteo Marine API](https://open-meteo.com/en/docs/marine-weather-api) `ocean_current_velocity`, `ocean_current_direction` | 7.5° → 2°/3° | 31 days |
 | Time ranges | 24 h / 7 days / 30 days / long archive / custom | 1° hourly · 2° 3-hourly · 3° 12-hourly · 3° daily | 25 / 57 / 61 / 148 |
 
 The snapshots are packed as per-field int16 with per-field grids and loaded on demand by range. The default 24 h range is 360 × 181 at 1° for the atmosphere and 180 × 91 at 2° for land (≈68 MB, 25 hourly frames). The 7-day range is 2° and 3-hourly (57 frames, ≈61 MB); the 30-day range is 3° and 12-hourly (61 frames, ≈29 MB); the long atmosphere archive is 3° daily (148 frames, ≈37 MB). The app decodes a field lazily on first use, caches a range in memory after its first load, and never reloads the page to switch ranges.
@@ -183,6 +192,7 @@ The result is a render loop that is a handful of full-screen passes plus one 2D 
 - **Cameron Beccario / earth.nullschool.net** — GFS re-gridding and the EPak format.
 - **Open-Meteo** — historical forecast API for land and hydrology.
 - **Natural Earth** — basemap vectors.
+- **Open-Meteo Marine API** — surface ocean current fields.
 - **Three.js**, **React**, **Vite**, **Space Grotesk**, **JetBrains Mono**.
 
 ## License
