@@ -210,6 +210,7 @@ export class GlobeEngine {
   private water: WaterPass;
   private coast: THREE.LineSegments | null = null;
   private earthTex: THREE.Texture | null = null;
+  private oceanMask: { data: Uint8ClampedArray; w: number; h: number } | null = null;
   private earthLoading = false;
   private panEnabled = true;
   private trailsPaused = false;
@@ -324,6 +325,13 @@ export class GlobeEngine {
         mask.needsUpdate = true;
         this.globeU.uBase.value = base;
         this.maskU.value = mask;
+        try {
+          const mctx = assets.mask.getContext('2d');
+          if (mctx) {
+            const img = mctx.getImageData(0, 0, assets.mask.width, assets.mask.height);
+            this.oceanMask = { data: img.data, w: assets.mask.width, h: assets.mask.height };
+          }
+        } catch { /* mask sampling is optional */ }
         for (const p of this.passes.values()) p.material.uniforms.uMask = this.maskU;
         this.readyTarget = 1;
       })
@@ -592,12 +600,57 @@ export class GlobeEngine {
     }
   }
 
+  /** Coastal/land NaNs in the marine source leave holes in the flow field.
+   *  Fill them from nearest valid ocean cells (using SST as the ocean mask). */
+  private fillOceanFlow(g: { nx: number; ny: number; latMin: number; lonMin: number; step: number }) {
+    if (!this.data) return;
+    const speed = this.flowSpeedBuf, dir = this.flowDirBuf;
+    const n = g.nx * g.ny;
+    const latAt = (y: number) => g.latMin + y * g.step;
+    const lonAt = (x: number) => g.lonMin + x * g.step;
+    const ocean = (i: number) => {
+      if (i >= n) return false;
+      const y = Math.floor(i / g.nx), x = i % g.nx;
+      return this.isOcean(latAt(y), lonAt(x));
+    };
+    const valid = (i: number) => ocean(i) && Number.isFinite(speed[i]) && Number.isFinite(dir[i]);
+    for (let iter = 0; iter < 8; iter++) {
+      const s0 = speed.slice(), d0 = dir.slice();
+      let changed = 0;
+      for (let y = 0; y < g.ny; y++) {
+        for (let x = 0; x < g.nx; x++) {
+          const i = x + y * g.nx;
+          if (!ocean(i) || valid(i)) continue;
+          let su = 0, sv = 0, c = 0;
+          for (let dy = -1; dy <= 1; dy++) {
+            for (let dx = -1; dx <= 1; dx++) {
+              const yy = y + dy, xx = x + dx;
+              if (yy < 0 || xx < 0 || yy >= g.ny || xx >= g.nx || (!dx && !dy)) continue;
+              const j = xx + yy * g.nx;
+              if (!valid(j)) continue;
+              const a = (d0[j] * Math.PI) / 180, s = s0[j] / 3.6;
+              su += -s * Math.sin(a); sv += -s * Math.cos(a); c++;
+            }
+          }
+          if (c) {
+            const u = su / c, v = sv / c;
+            speed[i] = Math.hypot(u, v) * 3.6;
+            dir[i] = (Math.atan2(-u, -v) * 180 / Math.PI + 360) % 360;
+            changed++;
+          }
+        }
+      }
+      if (!changed) break;
+    }
+  }
+
   private refreshFlow(def: LayerDef, colorMode: FlowColor) {
     if (!this.data || !this.derived) return;
     const speedField = def.field!;
     const dirField = def.dirField!;
     this.data.interpolate(speedField, this.frame, this.flowSpeedBuf);
     this.data.interpolate(dirField, this.frame, this.flowDirBuf);
+    if (def.id === 'ocean_current') this.fillOceanFlow(this.data.gridFor(speedField));
     for (let i = 0; i < this.flowSpeed.length; i++) {
       const v = this.flowSpeedBuf[i];
       const d = this.flowDirBuf[i];
@@ -644,10 +697,23 @@ export class GlobeEngine {
     this.gusts.setPalette(palette);
   }
 
+  /** Sample the basemap land mask: true over water. */
+  private isOcean(lat: number, lon: number): boolean {
+    if (!this.oceanMask) return true;
+    const m = this.oceanMask;
+    const u = Math.min(0.9999, Math.max(0, (lon + 180) / 360));
+    const v = Math.min(0.9999, Math.max(0, (lat + 90) / 180));
+    const x = Math.floor(u * m.w);
+    const y = Math.floor((1 - v) * m.h);
+    const i = (y * m.w + x) * 4;
+    return m.data[i] < 128;
+  }
+
   private screenWind = (x: number, y: number): TrailSample | null => {
     if (!this.flow || !this.data) return null;
     const hit = this.pick(x, y);
     if (!hit || Math.abs(hit.lat) > 80) return null;
+    if (this.state?.flowLayer === 'ocean_current' && !this.isOcean(hit.lat, hit.lon)) return null;
     const w = this.sampleWind(hit.lat, hit.lon);
     if (!w) return null;
     const pe = this.project(hit.lat, hit.lon + 0.32);
