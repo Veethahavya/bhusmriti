@@ -175,8 +175,44 @@ export function BriefCard() {
   );
 }
 
+export function SmokeLegend() {
+  const flow = useAtmos((s) => s.flowLayer);
+  const setMode = useAtmos((s) => s.setVisualMode);
+  const def = LAYER_BY_ID[flow ?? 'wind10'] ?? LAYER_BY_ID.wind10;
+  const temp = LAYER_BY_ID.temp2m;
+  return (
+    <div className="legend-card smoke-legend glass">
+      <div className="legend-head">
+        <span className="legend-ic"><Icon name="wind" size={16} /></span>
+        <div>
+          <div className="eyebrow">REALISTIC · SMOKE</div>
+          <div className="legend-title">Wind smoke</div>
+        </div>
+        <div className="legend-unit">live</div>
+      </div>
+      <div className="legend-sub">temperature colour · pressure density · wind velocity</div>
+      <p className="legend-desc">A soft, volumetric reading of the atmosphere. Warm air glows orange; dense high-pressure air smokes thicker; the active wind level sets the motion.</p>
+      <div className="smoke-ramps">
+        <div><span>TEMPERATURE</span><i style={{ background: paletteCssGradient(temp.palette) }} /></div>
+        <div><span>PRESSURE DENSITY</span><i className="pressure-ramp" /></div>
+      </div>
+      <div className="legend-meta">
+        <span>DRIVEN BY</span><b>{def.label}</b>
+        <span>SURFACE</span><b>temperature · MSLP</b>
+      </div>
+      <div className="smoke-key">
+        <span><i style={{ background: 'linear-gradient(90deg,#2b1b4d,#e39a5c)' }} /> colour</span>
+        <span><i style={{ background: 'linear-gradient(90deg,rgba(180,230,255,.15),rgba(180,230,255,.9))' }} /> density</span>
+        <span><i style={{ background: 'rgba(94,234,212,.65)' }} /> velocity</span>
+      </div>
+      <button className="brief-open" onClick={() => setMode('atlas')}>BACK TO ATLAS <span>→</span></button>
+    </div>
+  );
+}
+
 export function RightRail() {
   const panel = useAtmos((s) => s.panel);
+  const visualMode = useAtmos((s) => s.visualMode);
   if (panel === 'briefing' || panel === 'settings') return null;
-  return <aside className="right-rail"><LegendCard /><BriefCard /></aside>;
+  return <aside className="right-rail">{visualMode === 'smoke' ? <SmokeLegend /> : <LegendCard />}<BriefCard /></aside>;
 }

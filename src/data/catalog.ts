@@ -198,7 +198,7 @@ export const LAYERS: LayerDef[] = [
     read: 'Dew point is conservative: a rising dew point means moist air is arriving, not just cooling.',
   },
   {
-    id: 'pw', label: 'Precipitable water', short: 'Precip water', sub: 'whole column · kg/m²', group: 'moisture', kind: 'scalar',
+    id: 'pw', label: 'Precipitable water', short: 'Precip water', sub: 'whole column', group: 'moisture', kind: 'scalar',
     unit: 'kg/m²', decimals: 1, palette: P.humidity, range: [0, 80], contour: 10,
     contourColor: 'rgba(170,240,255,0.3)', field: 'total_precipitable_water',
     defaultOpacity: 0.8, glyph: 'rh',

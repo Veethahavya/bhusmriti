@@ -22,6 +22,7 @@ export type EngineState = {
   opacity: Record<string, number>;
   flowLayer: string | null;
   flowColor: FlowColor;
+  visualMode: 'atlas' | 'smoke';
   particles: boolean;
   density: number;
   barbs: boolean;
@@ -454,6 +455,11 @@ export class GlobeEngine {
     if (!prev || state.flowLayer !== prev.flowLayer || state.flowColor !== prev.flowColor || state.particles !== prev.particles || state.density !== prev.density) {
       this.syncFlow(state);
     }
+    if (!prev || state.visualMode !== prev.visualMode) {
+      this.trails.setSmoke(state.visualMode === 'smoke');
+      this.syncLayers(state);
+      this.syncFlow(state, true);
+    }
     if (!prev || state.home !== prev.home) {
       // overlay reads home from state each draw
     }
@@ -511,6 +517,7 @@ export class GlobeEngine {
         p.update(this.data!, this.derived!, this.frame);
       }
       p.setMode(s.mode, state.opacity[s.def.id] ?? s.def.defaultOpacity);
+      p.mesh.visible = state.visualMode !== 'smoke';
       p.mesh.renderOrder = 10 + i;
     });
     this.frameDirty = true;
@@ -579,7 +586,7 @@ export class GlobeEngine {
       color, colorRange, palette, speedRange: def.range,
       grid: { nx: g.nx, ny: g.ny, lonMin: g.lonMin, latMin: g.latMin, step: g.step },
     };
-    this.trails.setPalette(palette);
+    this.trails.setPalette(this.state?.visualMode === 'smoke' ? LAYER_BY_ID.temp2m.palette : palette);
   }
 
   private screenWind = (x: number, y: number): TrailSample | null => {
@@ -596,9 +603,21 @@ export class GlobeEngine {
     const el = Math.hypot(ex, ey) || 1, nl = Math.hypot(nx, ny) || 1;
     ex /= el; ey /= el; nx /= nl; ny /= nl;
     const z = Math.max(0, Math.min(1, (this.fullDistance - this.distance) / Math.max(0.01, this.fullDistance - this.minDistance)));
-    const scale = 3.3 + z * 3.2;
+    const scale = (this.state?.visualMode === 'smoke' ? 5.0 : 3.3) + z * 3.2;
     const vx = (w.u * ex + w.v * nx) * scale;
     const vy = (w.u * ey + w.v * ny) * scale;
+    if (this.state?.visualMode === 'smoke') {
+      const tIdx = Math.round(this.frame);
+      const temp = this.data.sample('temperature_2m', tIdx, hit.lon, hit.lat);
+      const pres = this.data.sample('pressure_msl', tIdx, hit.lon, hit.lat);
+      const color = Number.isFinite(temp)
+        ? Math.round(Math.max(0, Math.min(1, (temp + 45) / 95)) * 13)
+        : 6;
+      const density = Number.isFinite(pres)
+        ? Math.max(0.12, Math.min(1, (pres - 975) / 55))
+        : 0.5;
+      return { vx, vy, speed: w.speed, color, density };
+    }
     const cv = sampleGrid(this.flow.color, hit.lon, hit.lat, this.flow.grid);
     const t = Math.max(0, Math.min(1, (cv - this.flow.colorRange[0]) / Math.max(1e-6, this.flow.colorRange[1] - this.flow.colorRange[0])));
     return { vx, vy, speed: w.speed, color: Math.round(t * 13) };

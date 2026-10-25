@@ -69,7 +69,7 @@ Manual refresh:
 npm run refresh
 ```
 
-Requirements: **Node 20+**, **Python 3 with numpy** (`pip3 install -r requirements.txt`). If `python3` does not have numpy, `scripts/refresh.sh` automatically looks for the bundled DSH runtime or set `Bhūsmṛti_PYTHON=/path/to/python3`.
+Requirements: **Node 20+**, **Python 3 with numpy** (`pip3 install -r requirements.txt`). If `python3` does not have numpy, `scripts/refresh.sh` automatically looks for the bundled DSH runtime or set `AEROS_PYTHON=/path/to/python3`.
 
 A cron alternative to the server:
 
@@ -93,6 +93,20 @@ A cron alternative to the server:
 - **Settings** — a near-full-screen control room: text size, interface size, high-contrast panels, streamline density/colour, wind barbs, labels, graticule, terminator, wind units, data refresh and credits.
 
 ![Morning briefing](docs/aeros-briefing.png)
+
+### Two visual languages
+
+**ATLAS** is the conventional notation — one colour wash, contour lines, vectors and barbs. **SMOKE** is the realistic mode: soft wind-driven puffs coloured by surface temperature, made denser by high mean-sea-level pressure, and moved by the active wind level. Toggle it in the top bar or from the FIELDS quick row.
+
+![Smoke view](docs/aeros-smoke.png)
+
+Notation is locked to keep it legible: one colour wash and one flow at a time. When a type is already occupied, its button is faded and struck through; you cannot accidentally create two fills or two flow layers. **LINES** is contour-only — constant zero regions no longer flood whole countries. CAPE and snow are clean isopleths now.
+
+![CAPE lines only](docs/aeros-cape-line.png)
+
+![Snow lines only](docs/aeros-snow-line.png)
+
+Every active/selected variable has a small **i** button (layer row, mode row, or legend) with a compact explanation. **PW** is now labelled **Precip water** and the popover explains that it is precipitable water — the total vapour in a column, in kg/m² — and why it matters.
 
 ### Time is a first-class control
 

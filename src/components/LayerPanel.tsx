@@ -19,6 +19,8 @@ export function LayerPanel() {
   const setParticles = useAtmos((s) => s.setParticles);
   const setBarbs = useAtmos((s) => s.setBarbs);
   const setVarInfo = useAtmos((s) => s.setVarInfo);
+  const visualMode = useAtmos((s) => s.visualMode);
+  const setVisualMode = useAtmos((s) => s.setVisualMode);
   const [closed, setClosed] = useState<Record<string, boolean>>({});
   const data = useAtmos((s) => s.data);
   const DERIVED = new Set(['adv_temp', 'adv_moist', 'div10', 'ptend3', 'dtd']);
@@ -52,6 +54,9 @@ export function LayerPanel() {
         >
           <span className="qdot" /> WIND BARBS
         </button>
+        <button className={`quick ${visualMode === 'smoke' ? 'on' : ''}`} onClick={() => setVisualMode(visualMode === 'smoke' ? 'atlas' : 'smoke')} title="Toggle realistic wind-smoke view">
+          <span className="qdot" /> SMOKE
+        </button>
         <button className="quick ghost" onClick={clearOverlays}>CLEAR</button>
       </div>
 
@@ -59,6 +64,13 @@ export function LayerPanel() {
         <button className="barb-key" onClick={() => setPanel('info')}>
           <span>WIND BARBS</span> half = 5 kt · full = 10 kt · pennant = 50 kt <b>guide →</b>
         </button>
+      )}
+
+      {visualMode === 'smoke' && (
+        <div className="smoke-note">
+          <b>SMOKE VIEW</b>
+          Colour = temperature · density = pressure · motion = active wind level. Fill/line fields are suppressed.
+        </div>
       )}
 
       {data?.manifest.atmosphereOnly && (
@@ -85,15 +97,16 @@ export function LayerPanel() {
                 const isFlow = flow === l.id;
                 const active = isFill || isLine || isFlow;
                 const flowBlocked = l.kind === 'flow' && !!flow && flow !== l.id;
-                const ok = available(l) && !flowBlocked;
+                const smokeBlocked = visualMode === 'smoke' && l.kind !== 'flow';
+                const ok = available(l) && !flowBlocked && !smokeBlocked;
                 const fillBusy = !!fill && fill !== l.id;
                 return (
-                  <div key={l.id} className={`layer-item ${active ? 'active' : ''} ${selected === l.id ? 'selected' : ''} ${available(l) ? '' : 'unavailable'} ${flowBlocked ? 'blocked' : ''}`}>
+                  <div key={l.id} className={`layer-item ${active ? 'active' : ''} ${selected === l.id ? 'selected' : ''} ${available(l) ? '' : 'unavailable'} ${flowBlocked || smokeBlocked ? 'blocked' : ''}`}>
                     <button
                       className="layer-main"
                       onClick={() => { if (!ok) return; toggleLayer(l.id); setSelected(l.id); }}
                       disabled={!ok}
-                      title={flowBlocked ? `${l.label} — remove the active flow layer first` : available(l) ? `${l.label} — ${l.description}` : `${l.label} — not in the 5-month atmosphere archive`}
+                      title={flowBlocked ? `${l.label} — remove the active flow layer first` : smokeBlocked ? `${l.label} — switch to ATLAS to edit this layer` : available(l) ? `${l.label} — ${l.description}` : `${l.label} — not in the long atmosphere archive`}
                     >
                       <span className="layer-ic"><Icon name={l.glyph} size={15} /></span>
                       <span className="layer-txt">

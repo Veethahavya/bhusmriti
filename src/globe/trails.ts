@@ -6,6 +6,7 @@ export type TrailSample = {
   vy: number;
   speed: number;
   color: number;
+  density?: number;
 };
 
 type Particle = { x: number; y: number; age: number; life: number };
@@ -32,6 +33,7 @@ export class WindTrails {
   private dpr = 1;
   private density = 1;
   private visible = true;
+  private smoke = false;
   private mobile = false;
   private cleared = true;
 
@@ -44,6 +46,14 @@ export class WindTrails {
     this.ctx = this.canvas.getContext('2d', { alpha: true })!;
     this.mobile = window.innerWidth < 760 || (navigator.hardwareConcurrency ?? 8) <= 4;
     this.resize(parent.clientWidth, parent.clientHeight, Math.min(devicePixelRatio, 1.75));
+  }
+
+  setSmoke(v: boolean) {
+    if (this.smoke === v) return;
+    this.smoke = v;
+    this.setDensity(this.density);
+    this.clear();
+    this.respawnAll();
   }
 
   setPalette(palette: Palette) {
@@ -63,7 +73,7 @@ export class WindTrails {
 
   setDensity(d: number) {
     this.density = d;
-    const n = Math.round((this.mobile ? 1300 : 3200) * d);
+    const n = Math.round((this.mobile ? 1300 : 3200) * d * (this.smoke ? 0.40 : 1));
     this.resizeParticles(Math.max(700, Math.min(7200, n)));
   }
 
@@ -127,12 +137,13 @@ export class WindTrails {
 
     // fade the existing trail
     ctx.globalCompositeOperation = 'destination-out';
-    ctx.fillStyle = `rgba(0,0,0,${FADE})`;
+    ctx.fillStyle = `rgba(0,0,0,${this.smoke ? 0.022 : FADE})`;
     ctx.fillRect(0, 0, this.width, this.height);
     ctx.globalCompositeOperation = 'source-over';
 
-    const paths = Array.from({ length: BINS }, () => new Path2D());
-    const used = new Uint8Array(BINS);
+    const DENS = this.smoke ? 4 : 1;
+    const paths = Array.from({ length: BINS }, () => Array.from({ length: DENS }, () => new Path2D()));
+    const used = new Uint8Array(BINS * DENS);
 
     for (const p of this.particles) {
       const s = this.sample(p.x, p.y);
@@ -147,10 +158,11 @@ export class WindTrails {
         continue;
       }
       const bin = Math.max(0, Math.min(BINS - 1, s.color));
-      const path = paths[bin];
+      const dens = this.smoke ? Math.min(DENS - 1, Math.floor(Math.max(0, Math.min(1, s.density ?? 0.5)) * DENS)) : 0;
+      const path = paths[bin][dens];
       path.moveTo(p.x, p.y);
       path.lineTo(nx, ny);
-      used[bin] = 1;
+      used[bin * DENS + dens] = 1;
       p.x = nx;
       p.y = ny;
       p.age += d;
@@ -164,13 +176,28 @@ export class WindTrails {
     ctx.clip();
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
-    const lw = this.mobile ? 0.95 : 1.15;
-    ctx.lineWidth = lw;
-    for (let b = 0; b < BINS; b++) {
-      if (!used[b] || !this.colors[b]) continue;
-      ctx.strokeStyle = this.colors[b];
-      ctx.globalAlpha = 0.78;
-      ctx.stroke(paths[b]);
+    if (this.smoke) {
+      ctx.filter = 'blur(2.5px)';
+      for (let b = 0; b < BINS; b++) {
+        ctx.strokeStyle = this.colors[b] ?? 'rgb(180,230,255)';
+        for (let q = 0; q < DENS; q++) {
+          if (!used[b * DENS + q]) continue;
+          const path = paths[b][q];
+          ctx.lineWidth = 3.0 + q * 2.4;
+          ctx.globalAlpha = 0.012 + q * 0.014;
+          ctx.stroke(path);
+        }
+      }
+      ctx.filter = 'none';
+    } else {
+      const lw = this.mobile ? 0.95 : 1.15;
+      ctx.lineWidth = lw;
+      for (let b = 0; b < BINS; b++) {
+        if (!used[b] || !this.colors[b]) continue;
+        ctx.strokeStyle = this.colors[b];
+        ctx.globalAlpha = 0.78;
+        ctx.stroke(paths[b][0]);
+      }
     }
     ctx.globalAlpha = 1;
     ctx.restore();

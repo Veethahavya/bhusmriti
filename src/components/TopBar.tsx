@@ -3,6 +3,7 @@ import { useNow, ageLabel } from '../lib/useNow';
 import { Search } from './Search';
 import { GearIcon } from './Icon';
 import { RangeMenu } from './RangeMenu';
+import { ModeToggle } from './ModeToggle';
 
 export function TopBar() {
   const data = useAtmos((s) => s.data);
@@ -35,6 +36,7 @@ export function TopBar() {
 
       <div className="topbar-right">
         <Search />
+        <ModeToggle />
         <button className={`tbtn ${panel === 'briefing' ? 'on' : ''}`} onClick={() => setPanel(panel === 'briefing' ? null : 'briefing')}>
           BRIEFING
         </button>
