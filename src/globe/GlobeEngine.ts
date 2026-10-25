@@ -25,6 +25,7 @@ export type EngineState = {
   flowLayer: string | null;
   flowColor: FlowColor;
   visualMode: 'globe' | 'earth';
+  playing: boolean;
   particles: boolean;
   density: number;
   barbs: boolean;
@@ -632,6 +633,12 @@ export class GlobeEngine {
       color, colorRange, palette, speedRange: def.range,
       grid: { nx: g.nx, ny: g.ny, lonMin: g.lonMin, latMin: g.latMin, step: g.step },
     };
+    this.trails.setStyle({
+      speed: def.trailSpeed ?? 1,
+      density: def.trailDensity ?? 1,
+      fade: def.trailFade ?? 0.034,
+      life: def.trailLife ?? 1,
+    });
     this.trails.setPalette(palette);
     this.trails.setGain(def.trailGain ?? 1);
     this.gusts.setPalette(palette);
@@ -1045,7 +1052,7 @@ export class GlobeEngine {
       this.water.update(this.data, this.frame);
       this.gusts.update(this.frame);
     }
-    if (!this.trailsPaused && !this.rangeLoading && this.state?.visualMode !== 'earth') this.trails.update(dt);
+    if (this.state?.playing && !this.trailsPaused && !this.rangeLoading && this.state?.visualMode !== 'earth') this.trails.update(dt);
 
     if (now - this.overlayAt > 70 || this.lastOverlayVersion !== this.camVersion) {
       this.overlayAt = now;

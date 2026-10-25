@@ -34,6 +34,7 @@ export class WindTrails {
   private density = 1;
   private visible = true;
   private gain = 1;
+  private style = { speed: 1, density: 1, fade: FADE, life: 1 };
   private mobile = false;
   private cleared = true;
 
@@ -60,6 +61,16 @@ export class WindTrails {
 
   setGain(g: number) { this.gain = Math.max(0.5, Math.min(3, g)); }
 
+  setStyle(s: { speed?: number; density?: number; fade?: number; life?: number }) {
+    this.style = {
+      speed: Math.max(0.5, Math.min(12, s.speed ?? 1)),
+      density: Math.max(0.2, Math.min(2, s.density ?? 1)),
+      fade: Math.max(0.006, Math.min(0.08, s.fade ?? FADE)),
+      life: Math.max(0.5, Math.min(4, s.life ?? 1)),
+    };
+    this.setDensity(this.density);
+  }
+
   setVisible(v: boolean) {
     this.visible = v;
     if (!v) this.clear();
@@ -67,7 +78,7 @@ export class WindTrails {
 
   setDensity(d: number) {
     this.density = d;
-    const n = Math.round((this.mobile ? 1300 : 3200) * d);
+    const n = Math.round((this.mobile ? 1300 : 3200) * d * this.style.density);
     this.resizeParticles(Math.max(700, Math.min(7200, n)));
   }
 
@@ -106,7 +117,7 @@ export class WindTrails {
       if (this.sample(x, y)) {
         p.x = x; p.y = y;
         p.age = immediate ? Math.random() * 4 : 0;
-        p.life = 8 + Math.random() * 12;
+        p.life = (8 + Math.random() * 12) * this.style.life;
         return;
       }
     }
@@ -131,7 +142,7 @@ export class WindTrails {
 
     // fade the existing trail
     ctx.globalCompositeOperation = 'destination-out';
-    ctx.fillStyle = `rgba(0,0,0,${FADE})`;
+    ctx.fillStyle = `rgba(0,0,0,${this.style.fade})`;
     ctx.fillRect(0, 0, this.width, this.height);
     ctx.globalCompositeOperation = 'source-over';
 
@@ -144,8 +155,8 @@ export class WindTrails {
         this.spawn(p);
         continue;
       }
-      const nx = p.x + s.vx * d * this.gain;
-      const ny = p.y + s.vy * d * this.gain;
+      const nx = p.x + s.vx * d * this.style.speed;
+      const ny = p.y + s.vy * d * this.style.speed;
       if (nx < -40 || nx > this.width + 40 || ny < -40 || ny > this.height + 40) {
         this.spawn(p);
         continue;

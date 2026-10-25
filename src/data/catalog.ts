@@ -127,7 +127,8 @@ export const LAYERS: LayerDef[] = [
   {
     id: 'ocean_current', label: 'Ocean surface current', short: 'Ocean flow', sub: 'surface · km/h', group: 'flow', kind: 'flow',
     unit: 'km/h', decimals: 1, palette: P.current, range: [0, 8], field: 'ocean_current_velocity', dirField: 'ocean_current_direction',
-    defaultOpacity: 1, trailGain: 1.6, pattern: 0, glyph: 'wind',
+    defaultOpacity: 1, trailGain: 1.25, trailSpeed: 5.5, trailDensity: 0.55, trailFade: 0.018, trailLife: 1.8,
+    pattern: 0, glyph: 'wind',
     description: 'The surface ocean current. In the atlas it is a flow layer; in EARTH it drives the translucent, temperature-shaded water.',
     read: 'Western boundary currents are narrow and fast; eddies and convergence zones concentrate marine heat and nutrients.',
   },

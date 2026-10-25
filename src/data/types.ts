@@ -58,6 +58,10 @@ export interface LayerDef {
   lineOnly?: boolean;
   defaultOpacity: number;
   trailGain?: number;
+  trailSpeed?: number;
+  trailDensity?: number;
+  trailFade?: number;
+  trailLife?: number;
   description: string;
   read: string;
   glyph: GlyphId;
