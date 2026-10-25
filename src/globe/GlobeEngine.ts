@@ -456,6 +456,7 @@ export class GlobeEngine {
     if (state.frame !== prev?.frame) {
       this.frame = state.frame;
       this.frameDirty = true;
+      this.syncFlowRaster(state);
       if (this.data) {
         const i = Math.max(0, Math.min(this.data.times.length - 1, Math.floor(state.frame)));
         const f = state.frame - Math.floor(state.frame);
@@ -532,6 +533,24 @@ export class GlobeEngine {
     this.frameDirty = true;
   }
 
+  private syncFlowRaster(state: EngineState) {
+    if (!this.flowpass || !this.data) return;
+    const def = state.flowLayer ? LAYER_BY_ID[state.flowLayer] : null;
+    const rasterLayers = new Set(['wind10', 'wind850', 'wind500', 'wind250', 'ocean_current']);
+    const useRaster = !!def && state.dataset !== 'long' && rasterLayers.has(def.id);
+    if (!useRaster || !def) {
+      this.flowpass.setFlow(null);
+      this.flowpass.setVisible(false);
+      this.trails.setVisible(state.particles);
+      return;
+    }
+    const frame = Math.max(0, Math.min(this.data.times.length - 1, Math.round(this.frame)));
+    const url = `/data/flows/${state.dataset}/${def.id}/${String(frame).padStart(3, '0')}.png`;
+    this.flowpass.setFlow(url);
+    this.flowpass.setVisible(true);
+    this.trails.setVisible(false);
+  }
+
   private syncFlow(state: EngineState, force = false) {
     if (!this.data || !this.derived) {
       this.trails.setVisible(false);
@@ -544,12 +563,7 @@ export class GlobeEngine {
       return;
     }
     this.ensureFlowBuffers(this.data, def.field!);
-    const rasterRanges = state.dataset !== 'long';
-    const rasterLayers = new Set(['wind10', 'wind850', 'wind500', 'wind250', 'ocean_current']);
-    const useRaster = rasterRanges && rasterLayers.has(def.id);
-    this.flowpass.setFlow(useRaster ? `/data/flows/${state.dataset}/${def.id}/${String(Math.round(this.frame)).padStart(3, '0')}.png` : null);
-    this.flowpass.setVisible(useRaster);
-    this.trails.setVisible(!useRaster && state.particles);
+    this.syncFlowRaster(state);
     this.trails.setDensity(state.density);
     const key = `${def.id}|${state.flowColor}|${Math.round(this.frame * 20)}`;
     if (force || key !== this.flowFieldKey) {

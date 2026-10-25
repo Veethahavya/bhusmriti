@@ -43,7 +43,9 @@ export class FlowPass {
       return;
     }
     this.url = url;
+    const requested = url;
     this.loader.load(url, (tex) => {
+      if (this.url !== requested) { tex.dispose(); return; }
       tex.minFilter = THREE.LinearFilter;
       tex.magFilter = THREE.LinearFilter;
       tex.colorSpace = THREE.SRGBColorSpace;
@@ -51,7 +53,7 @@ export class FlowPass {
       this.tex = tex;
       this.uniforms.uFlowMap.value = tex;
       this.mesh.visible = this.wanted;
-    }, undefined, () => { this.mesh.visible = false; });
+    }, undefined, () => { if (this.url === requested) this.mesh.visible = false; });
   }
 
   setVisible(v: boolean) {
