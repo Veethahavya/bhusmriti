@@ -302,7 +302,9 @@ void main() {
 `;
 
 export const FLOW_FRAG = COMMON + /* glsl */ `
-uniform sampler2D uFlowMap;
+uniform sampler2D uFlowMapA;
+uniform sampler2D uFlowMapB;
+uniform float uFlowMix;
 uniform float uFlowOpacity;
 
 void main() {
@@ -311,7 +313,7 @@ void main() {
   float t;
   if (!hitSphere(uCamPos, rd, p, t)) discard;
   vec2 uv = sphereUv(p);
-  vec4 c = texture(uFlowMap, uv);
+  vec4 c = mix(texture(uFlowMapA, uv), texture(uFlowMapB, uv), uFlowMix);
   if (c.a < 0.01) discard;
   fragColor = vec4(c.rgb, c.a * uFlowOpacity);
 }

@@ -539,14 +539,19 @@ export class GlobeEngine {
     const rasterLayers = new Set(['wind10', 'wind850', 'wind500', 'wind250', 'ocean_current']);
     const useRaster = !!def && state.dataset !== 'long' && rasterLayers.has(def.id);
     if (!useRaster || !def) {
-      this.flowpass.setFlow(null);
+      this.flowpass.setFlowPair(null, null, 0);
       this.flowpass.setVisible(false);
       this.trails.setVisible(state.particles);
       return;
     }
-    const frame = Math.max(0, Math.min(this.data.times.length - 1, Math.round(this.frame)));
-    const url = `/data/flows/${state.dataset}/${def.id}/${String(frame).padStart(3, '0')}.png`;
-    this.flowpass.setFlow(url);
+    const maxFrame = Math.max(0, this.data.times.length - 1);
+    const f = Math.max(0, Math.min(maxFrame, this.frame));
+    const i = Math.floor(f);
+    const j = Math.min(i + 1, maxFrame);
+    const count = Math.min(this.data.times.length, state.dataset === '24h' ? 25 : 61);
+    const urls = Array.from({ length: count }, (_, k) => `/data/flows/${state.dataset}/${def.id}/${String(k).padStart(3, '0')}.png`);
+    this.flowpass.preload(urls);
+    this.flowpass.setFlowPair(urls[i], urls[j], f - i);
     this.flowpass.setVisible(true);
     this.trails.setVisible(false);
   }

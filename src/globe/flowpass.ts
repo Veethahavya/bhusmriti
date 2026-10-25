@@ -7,13 +7,18 @@ export class FlowPass {
   private uniforms: Record<string, THREE.IUniform>;
   private url = '';
   private wanted = false;
-  private tex: THREE.Texture | null = null;
+  private texA: THREE.Texture | null = null;
+  private texB: THREE.Texture | null = null;
   private loader = new THREE.TextureLoader();
+  private cache = new Map<string, THREE.Texture>();
+  private pending = new Set<string>();
 
   constructor(scene: THREE.Scene, common: Record<string, THREE.IUniform>) {
     this.uniforms = {
       ...common,
-      uFlowMap: { value: null },
+      uFlowMapA: { value: null },
+      uFlowMapB: { value: null },
+      uFlowMix: { value: 0 },
       uFlowOpacity: { value: 0.95 },
     };
     const mat = new THREE.RawShaderMaterial({
@@ -33,37 +38,57 @@ export class FlowPass {
     scene.add(this.mesh);
   }
 
-  setFlow(url: string | null) {
-    if (!url) {
-      this.mesh.visible = false;
+  private load(url: string, onDone?: (tex: THREE.Texture) => void) {
+    if (this.cache.has(url)) {
+      const tex = this.cache.get(url)!;
+      onDone?.(tex);
       return;
     }
-    if (url === this.url && this.tex) {
-      this.mesh.visible = this.wanted;
-      return;
-    }
-    this.url = url;
-    const requested = url;
+    if (this.pending.has(url)) return;
+    this.pending.add(url);
     this.loader.load(url, (tex) => {
-      if (this.url !== requested) { tex.dispose(); return; }
+      this.pending.delete(url);
       tex.minFilter = THREE.LinearFilter;
       tex.magFilter = THREE.LinearFilter;
       tex.colorSpace = THREE.SRGBColorSpace;
-      this.tex?.dispose();
-      this.tex = tex;
-      this.uniforms.uFlowMap.value = tex;
+      this.cache.set(url, tex);
+      onDone?.(tex);
+    }, undefined, () => { this.pending.delete(url); });
+  }
+
+  preload(urls: string[]) {
+    for (const u of urls) this.load(u);
+  }
+
+  setFlowPair(urlA: string | null, urlB: string | null, mix: number) {
+    if (!urlA || !urlB) {
+      this.mesh.visible = false;
+      return;
+    }
+    this.url = urlA;
+    this.load(urlA, (tex) => {
+      if (this.url !== urlA) return;
+      this.texA = tex;
+      this.uniforms.uFlowMapA.value = tex;
       this.mesh.visible = this.wanted;
-    }, undefined, () => { if (this.url === requested) this.mesh.visible = false; });
+    });
+    this.load(urlB, (tex) => {
+      if (this.url !== urlA) return;
+      this.texB = tex;
+      this.uniforms.uFlowMapB.value = tex;
+    });
+    this.uniforms.uFlowMix.value = mix;
   }
 
   setVisible(v: boolean) {
     this.wanted = v;
-    this.mesh.visible = v && !!this.tex;
+    this.mesh.visible = v && !!this.texA;
   }
 
   dispose() {
     this.mesh.geometry.dispose();
     (this.mesh.material as THREE.Material).dispose();
-    this.tex?.dispose();
+    for (const tex of this.cache.values()) tex.dispose();
+    this.cache.clear();
   }
 }
