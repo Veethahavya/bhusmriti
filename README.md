@@ -94,6 +94,18 @@ A cron alternative to the server:
 
 ![Morning briefing](docs/aeros-briefing.png)
 
+### Datashader flow overlays
+
+_This lives on the `dev` branch; `main` is the stable GLOBE + ocean-current app._
+
+Flow layers are pre-rendered as transparent equirectangular PNGs by `pipeline/render_flows.py` using [datashader](https://github.com/holoviz/datashader). Streamlines are integrated from the stored u/v fields, rasterised as a speed/density aggregation, and sampled on the globe by a WebGL pass instead of the old canvas particle trails. Generate with:
+
+```bash
+.venv-ds/bin/python pipeline/render_flows.py wind10
+```
+
+The overlays are served from `public/data/flows/<range>/<flow>/<frame>.png`. Ranges/layers without an overlay fall back to the existing wind trails. This is an early datashader integration: the current prototype renders wind10, 850, 500, 250 and ocean_current for the 24 h range; the 7 d/30 d frame sets and the long archive still need a full render pass.
+
 ### Ocean surface current
 
 **Ocean surface current** is a flow layer under **Circulation**. Select it as the flow layer and its streamlines advect with the surface current.
@@ -139,6 +151,73 @@ The control room is almost full-screen: appearance (text and interface size, hig
 ![Settings](docs/aeros-settings.png)
 
 <p align="center"><img src="docs/aeros-mobile.png" alt="Bhūsmṛti on a phone" width="300" /></p>
+
+---
+
+## Branches
+
+| Branch | Purpose |
+|---|---|
+| **main** | Stable app — GLOBE, ocean current, wind trails, settings, ranges |
+| **dev** | Same app plus datashader pre-rendered flow overlays and the flow WebGL pass |
+| **dev-earth** | Archived EARTH-mode experiment (satellite/water/gusts); not the current app |
+
+---
+
+## GenAI attribution
+
+Bhūsmṛti was built in an AI-assisted workflow. The application code, GLSL shaders, data pipeline and documentation were generated and iterated with **DeepSeek Harness (DeepSeek Flash)** under the direction and review of the project maintainer. The human maintainer defined the product, data semantics and visual direction, reviewed the output, and is responsible for what ships.
+
+This attribution does not change the licenses or provenance of third-party data and assets; those retain their own terms.
+
+---
+
+## Installation prompt for GenAI
+
+Copy this prompt to a GenAI coding agent to get the app running from a clean clone:
+
+```text
+You are a GenAI coding agent helping me run Bhūsmṛti, a personal, non-commercial
+3D planetary flux atlas.
+
+Repository: https://github.com/Veethahavya/bhusmriti
+
+Goal: get the app running locally from a clean clone, without inventing data or
+changing data semantics.
+
+1. Inspect the repository and README. Confirm the branches:
+   - main: stable GLOBE + ocean-current app
+   - dev: main + datashader pre-rendered flow overlays
+   - dev-earth: archived EARTH-mode experiment (not the current app)
+   Use main unless I explicitly ask for the datashader flow work.
+
+2. Requirements: Node 20+ and Python 3.11+ with numpy. Run `npm install`.
+
+3. Data: `public/data/`, `dist/`, `.cache/`, `.venv-ds/` and `.pydeps/` are
+   gitignored. If `public/data/` is absent, run `npm run refresh`. This fetches
+   GFS/Open-Meteo and builds the 24 h, 7 d, 30 d and long ranges. The long
+   archive is atmosphere-only and the free Open-Meteo daily quota may fail.
+   If a fetch fails, stop and report the exact failed step; never fabricate
+   snapshots. If `public/data/` already exists, do not overwrite it without
+   asking me first.
+
+4. Build and run:
+   `npm run build`
+   `npm start`          -> http://127.0.0.1:4173
+   For hot reload: `npm run dev` -> http://127.0.0.1:5173
+   Do not start a second unrelated server.
+
+5. Verify: the globe renders; the layer panel supports FILL/LINES/FLOW; the
+   timeline switches 24 h / 7 d / 30 d / long; settings opens; hover probe works;
+   the ocean-current layer is present; on dev, datashader flow overlays load.
+   Report console errors and the exact commands used.
+
+6. Do not commit generated data, secrets, `dist/`, `.cache/`, `.venv-ds/` or
+   `.pydeps/`. Keep data credits and licenses. The application is MIT; data and
+   assets retain their own licenses.
+
+7. Summarize what worked, what failed, the exact commands, and any data caveats.
+```
 
 ---
 
